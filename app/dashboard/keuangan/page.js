@@ -20,7 +20,8 @@ import {
   TrendingUp,
   ArrowUpRight,
   ArrowDownRight,
-  DollarSign
+  DollarSign,
+  ArrowLeft
 } from 'lucide-react'
 
 const bulanOptions = [
@@ -192,8 +193,15 @@ export default function KeuanganPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Keuangan</h1>
-          <p className="text-gray-500 mt-1">Kelola arus kas dan laporan keuangan</p>
+          <div className="flex items-center gap-2 mb-1">
+            <Button variant="ghost" size="icon" asChild className="h-8 w-8 -ml-2">
+              <a href="/dashboard">
+                <ArrowLeft className="h-4 w-4" />
+              </a>
+            </Button>
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Keuangan</h1>
+          </div>
+          <p className="text-gray-500">Kelola arus kas dan laporan keuangan</p>
         </div>
 
         {activeTab !== 'laporan' && (

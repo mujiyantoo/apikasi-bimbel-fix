@@ -18,7 +18,8 @@ import {
   Trash2,
   Users,
   Loader2,
-  X
+  X,
+  ArrowLeft
 } from 'lucide-react'
 
 const kelasOptions = ['7A', '7B', '8A', '8B', '9A', '9B', '10 IPA', '10 IPS', '11 IPA', '11 IPS', '12 IPA', '12 IPS']

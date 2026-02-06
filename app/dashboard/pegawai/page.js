@@ -17,7 +17,8 @@ import {
   Trash2,
   UserCog,
   Loader2,
-  X
+  X,
+  ArrowLeft
 } from 'lucide-react'
 
 const jabatanOptions = ['Guru', 'Tutor', 'Admin', 'Keuangan', 'Kebersihan', 'Keamanan', 'Lainnya']
@@ -157,8 +158,15 @@ export default function PegawaiPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Data Pegawai</h1>
-          <p className="text-gray-500 mt-1">Kelola data pegawai bimbingan belajar</p>
+          <div className="flex items-center gap-2 mb-1">
+            <Button variant="ghost" size="icon" asChild className="h-8 w-8 -ml-2">
+              <a href="/dashboard">
+                <ArrowLeft className="h-4 w-4" />
+              </a>
+            </Button>
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Data Pegawai</h1>
+          </div>
+          <p className="text-gray-500">Kelola data pegawai dan staf</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
