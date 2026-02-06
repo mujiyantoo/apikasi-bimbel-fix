@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
@@ -67,11 +68,16 @@ export function Sidebar() {
       )}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="h-16 flex items-center px-6 border-b border-gray-200">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-white" />
+          <div className="h-auto py-4 flex items-center justify-center px-6 border-b border-gray-200">
+            <div className="relative w-full h-16">
+              <Image
+                src="/logo-bin.png"
+                alt="Bina Insan Nusantara"
+                fill
+                className="object-contain"
+                priority
+              />
             </div>
-            <span className="ml-3 font-bold text-lg text-gray-800">Bimbel App</span>
           </div>
 
           {/* Navigation */}
