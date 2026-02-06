@@ -295,7 +295,48 @@ export default function KeuanganPage() {
         </Dialog>
       </div>
 
-      {/* Filters */}
+      {/* Navigation Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer bg-blue-50/50 border-blue-100">
+          <CardHeader>
+            <div className="p-3 bg-blue-100 rounded-xl w-fit">
+              <CreditCard className="w-6 h-6 text-blue-600" />
+            </div>
+            <CardTitle className="text-lg mt-2">Pembayaran SPP</CardTitle>
+            <CardDescription>Catat pembayaran siswa</CardDescription>
+          </CardHeader>
+        </Card>
+
+        <Card className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer opacity-70 hover:opacity-100">
+          <CardHeader>
+            <div className="p-3 bg-emerald-50 rounded-xl w-fit">
+              <Wallet className="w-6 h-6 text-emerald-600" />
+            </div>
+            <CardTitle className="text-lg mt-2">Tagihan</CardTitle>
+            <CardDescription>Lihat tagihan pending</CardDescription>
+          </CardHeader>
+        </Card>
+
+        <Card className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer opacity-70 hover:opacity-100">
+          <CardHeader>
+            <div className="p-3 bg-purple-50 rounded-xl w-fit">
+              <Wallet className="w-6 h-6 text-purple-600" />
+            </div>
+            <CardTitle className="text-lg mt-2">Laporan</CardTitle>
+            <CardDescription>Laporan keuangan</CardDescription>
+          </CardHeader>
+        </Card>
+
+        <Card className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer opacity-70 hover:opacity-100">
+          <CardHeader>
+            <div className="p-3 bg-amber-50 rounded-xl w-fit">
+              <Wallet className="w-6 h-6 text-amber-600" />
+            </div>
+            <CardTitle className="text-lg mt-2">Pengeluaran</CardTitle>
+            <CardDescription>Catat pengeluaran</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
       <Card className="border-0 shadow-md">
         <CardContent className="p-4">
           <div className="relative">
