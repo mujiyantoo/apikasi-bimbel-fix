@@ -41,7 +41,15 @@ export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)
   const userRole = session?.user?.role || 'Staff'
 
-  const filteredMenu = menuItems.filter(item => item.roles.includes(userRole))
+  // Helper to normalize string to Title Case (e.g., 'admin' -> 'Admin')
+  const normalizeRole = (role) => {
+    if (!role) return 'Staff'
+    return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase()
+  }
+
+  const normalizedUserRole = normalizeRole(userRole)
+
+  const filteredMenu = menuItems.filter(item => item.roles.includes(normalizedUserRole))
 
   return (
     <>

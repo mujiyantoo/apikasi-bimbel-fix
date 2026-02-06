@@ -21,6 +21,7 @@ import {
   X,
   ArrowLeft
 } from 'lucide-react'
+import Link from 'next/link'
 
 const kelasOptions = ['7A', '7B', '8A', '8B', '9A', '9B', '10 IPA', '10 IPS', '11 IPA', '11 IPS', '12 IPA', '12 IPS']
 
@@ -151,6 +152,14 @@ export default function SiswaPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Link href="/dashboard">
+              <Button variant="ghost" size="sm" className="pl-0 hover:pl-2 transition-all">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Kembali ke Dashboard
+              </Button>
+            </Link>
+          </div>
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Data Siswa</h1>
           <p className="text-gray-500 mt-1">Kelola data siswa bimbingan belajar</p>
         </div>
