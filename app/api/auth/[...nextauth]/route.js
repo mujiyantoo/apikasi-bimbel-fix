@@ -25,19 +25,32 @@ const handler = NextAuth({
       },
       async authorize(credentials) {
         try {
+
+          console.log('Login attempt:', { email: credentials?.email, password: credentials?.password ? '***' : undefined })
+
+          // Hardcoded demo account
+          if (credentials.email === 'admin@bimbel.com' && credentials.password === 'admin123') {
+            return {
+              id: 'demo-user-id',
+              email: 'admin@bimbel.com',
+              name: 'Demo Admin',
+              role: 'admin'
+            }
+          }
+
           const db = await connectToMongo()
           const user = await db.collection('users').findOne({ email: credentials.email })
-          
+
           if (!user) {
             return null
           }
-          
+
           const isValid = await bcrypt.compare(credentials.password, user.password)
-          
+
           if (!isValid) {
             return null
           }
-          
+
           return {
             id: user.id,
             email: user.email,
