@@ -21,7 +21,8 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronRight
+  ChevronRight,
+  Banknote
 } from 'lucide-react'
 
 const menuItems = [
@@ -33,6 +34,7 @@ const menuItems = [
   { name: 'Akuntansi', href: '/dashboard/akuntansi', icon: Calculator, roles: ['Admin'] },
   { name: 'Pimpinan', href: '/dashboard/pimpinan', icon: Crown, roles: ['Admin', 'Pimpinan'] },
   { name: 'Laporan', href: '/dashboard/laporan', icon: FileText, roles: ['Admin', 'Pimpinan'] },
+  { name: 'Payroll', href: '/dashboard/payroll', icon: Banknote, roles: ['Admin', 'Pimpinan'] },
 ]
 
 export function Sidebar() {
