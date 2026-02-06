@@ -33,6 +33,11 @@ export default function DashboardPage() {
     setLoading(true)
     try {
       const res = await fetch('/api/dashboard/stats')
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`)
+      }
+
       const data = await res.json()
       setStats(data)
     } catch (error) {
@@ -208,7 +213,7 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
-            ) : stats.recentActivities.length > 0 ? (
+            ) : (stats.recentActivities && stats.recentActivities.length > 0) ? (
               <div className="space-y-4">
                 {stats.recentActivities.map((activity, index) => (
                   <div key={index} className="flex items-start space-x-3">
