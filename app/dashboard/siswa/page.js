@@ -46,10 +46,15 @@ export default function SiswaPage() {
       const params = new URLSearchParams()
       if (search) params.append('search', search)
       if (filterKelas) params.append('kelas', filterKelas)
-      
+
       const res = await fetch(`/api/siswa?${params}`)
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`)
+      }
+
       const data = await res.json()
-      setSiswa(data)
+      setSiswa(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Error fetching siswa:', error)
       toast.error('Gagal memuat data siswa')
@@ -127,7 +132,7 @@ export default function SiswaPage() {
 
     try {
       const res = await fetch(`/api/siswa/${id}`, { method: 'DELETE' })
-      
+
       if (!res.ok) {
         const data = await res.json()
         throw new Error(data.error || 'Gagal menghapus siswa')
@@ -150,7 +155,7 @@ export default function SiswaPage() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button 
+            <Button
               onClick={() => handleOpenDialog()}
               className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
             >
@@ -343,7 +348,7 @@ export default function SiswaPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {siswa.map((s) => (
+                  {Array.isArray(siswa) && siswa.map((s) => (
                     <TableRow key={s.id}>
                       <TableCell className="font-medium">{s.nama}</TableCell>
                       <TableCell>
