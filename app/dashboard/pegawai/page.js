@@ -43,10 +43,15 @@ export default function PegawaiPage() {
     try {
       const params = new URLSearchParams()
       if (search) params.append('search', search)
-      
+
       const res = await fetch(`/api/pegawai?${params}`)
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`)
+      }
+
       const data = await res.json()
-      setPegawai(data)
+      setPegawai(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Error fetching pegawai:', error)
       toast.error('Gagal memuat data pegawai')
@@ -124,7 +129,7 @@ export default function PegawaiPage() {
 
     try {
       const res = await fetch(`/api/pegawai/${id}`, { method: 'DELETE' })
-      
+
       if (!res.ok) {
         const data = await res.json()
         throw new Error(data.error || 'Gagal menghapus pegawai')
@@ -157,7 +162,7 @@ export default function PegawaiPage() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button 
+            <Button
               onClick={() => handleOpenDialog()}
               className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
             >
@@ -339,7 +344,7 @@ export default function PegawaiPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pegawai.map((p) => (
+                  {Array.isArray(pegawai) && pegawai.map((p) => (
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{p.nama}</TableCell>
                       <TableCell>
