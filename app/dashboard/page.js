@@ -103,7 +103,7 @@ export default function DashboardPage() {
             Selamat Datang, {session?.user?.name || 'User'}!
           </h1>
           <p className="text-gray-500 mt-1">
-            Dashboard ringkasan Bimbel Management System
+            Dashboard Bimbel Bina Insan Nusantara Management System
           </p>
         </div>
         <Button
