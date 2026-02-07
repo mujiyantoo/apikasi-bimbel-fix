@@ -55,7 +55,7 @@ async function handleRoute(request, { params }) {
 
   try {
     const db = await connectToMongo()
-    
+
     // Initialize admin on first request
     await initializeAdmin(db)
 
@@ -97,7 +97,7 @@ async function handleRoute(request, { params }) {
       const url = new URL(request.url)
       const search = url.searchParams.get('search') || ''
       const kelas = url.searchParams.get('kelas') || ''
-      
+
       let query = {}
       if (search) {
         query.$or = [
@@ -119,7 +119,7 @@ async function handleRoute(request, { params }) {
 
     if (route === '/siswa' && method === 'POST') {
       const body = await request.json()
-      
+
       if (!body.nama || !body.nis || !body.kelas) {
         return handleCORS(NextResponse.json(
           { error: 'Nama, NIS, dan Kelas wajib diisi' },
@@ -140,6 +140,8 @@ async function handleRoute(request, { params }) {
         nama: body.nama,
         nis: body.nis,
         kelas: body.kelas,
+        mataPelajaran: body.mataPelajaran || '',
+        tanggalMasuk: body.tanggalMasuk || '',
         jenisKelamin: body.jenisKelamin || '',
         alamat: body.alamat || '',
         telepon: body.telepon || '',
@@ -148,7 +150,7 @@ async function handleRoute(request, { params }) {
       }
 
       await db.collection('siswa').insertOne(siswa)
-      
+
       // Log activity
       await db.collection('activities').insertOne({
         id: uuidv4(),
@@ -197,7 +199,7 @@ async function handleRoute(request, { params }) {
     if (route === '/pegawai' && method === 'GET') {
       const url = new URL(request.url)
       const search = url.searchParams.get('search') || ''
-      
+
       let query = {}
       if (search) {
         query.$or = [
@@ -216,7 +218,7 @@ async function handleRoute(request, { params }) {
 
     if (route === '/pegawai' && method === 'POST') {
       const body = await request.json()
-      
+
       if (!body.nama || !body.nip || !body.jabatan) {
         return handleCORS(NextResponse.json(
           { error: 'Nama, NIP, dan Jabatan wajib diisi' },
@@ -245,7 +247,7 @@ async function handleRoute(request, { params }) {
       }
 
       await db.collection('pegawai').insertOne(pegawai)
-      
+
       await db.collection('activities').insertOne({
         id: uuidv4(),
         type: 'pegawai',
@@ -301,7 +303,7 @@ async function handleRoute(request, { params }) {
 
     if (route === '/pembayaran' && method === 'POST') {
       const body = await request.json()
-      
+
       const pembayaran = {
         id: uuidv4(),
         siswaId: body.siswaId,
@@ -317,7 +319,7 @@ async function handleRoute(request, { params }) {
       }
 
       await db.collection('pembayaran').insertOne(pembayaran)
-      
+
       const { _id, ...cleanPembayaran } = pembayaran
       return handleCORS(NextResponse.json(cleanPembayaran, { status: 201 }))
     }
@@ -334,7 +336,7 @@ async function handleRoute(request, { params }) {
 
     if (route === '/users' && method === 'POST') {
       const body = await request.json()
-      
+
       if (!body.email || !body.password || !body.name || !body.role) {
         return handleCORS(NextResponse.json(
           { error: 'Email, password, name, dan role wajib diisi' },
@@ -361,7 +363,7 @@ async function handleRoute(request, { params }) {
       }
 
       await db.collection('users').insertOne(user)
-      
+
       const { password, _id, ...cleanUser } = user
       return handleCORS(NextResponse.json(cleanUser, { status: 201 }))
     }

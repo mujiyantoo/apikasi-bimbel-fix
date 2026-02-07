@@ -38,7 +38,9 @@ export default function SiswaPage() {
     nama: '',
     nis: '',
     kelas: '',
+    kelas: '',
     mataPelajaran: '',
+    tanggalMasuk: '',
     jenisKelamin: '',
     alamat: '',
     telepon: ''
@@ -76,7 +78,9 @@ export default function SiswaPage() {
       nama: '',
       nis: '',
       kelas: '',
+      kelas: '',
       mataPelajaran: '',
+      tanggalMasuk: '',
       jenisKelamin: '',
       alamat: '',
       telepon: ''
@@ -92,6 +96,7 @@ export default function SiswaPage() {
         nis: siswaData.nis,
         kelas: siswaData.kelas,
         mataPelajaran: siswaData.mataPelajaran || '',
+        tanggalMasuk: siswaData.tanggalMasuk || '',
         jenisKelamin: siswaData.jenisKelamin || '',
         alamat: siswaData.alamat || '',
         telepon: siswaData.telepon || ''
@@ -263,6 +268,15 @@ export default function SiswaPage() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="tanggalMasuk">Tanggal Mulai Masuk</Label>
+                <Input
+                  id="tanggalMasuk"
+                  type="date"
+                  value={formData.tanggalMasuk}
+                  onChange={(e) => setFormData({ ...formData, tanggalMasuk: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="alamat">Alamat</Label>
                 <Input
                   id="alamat"
@@ -373,6 +387,7 @@ export default function SiswaPage() {
                     <TableHead>NIS</TableHead>
                     <TableHead>Kelas</TableHead>
                     <TableHead>Mata Pelajaran</TableHead>
+                    <TableHead>Tanggal Masuk</TableHead>
                     <TableHead>Jenis Kelamin</TableHead>
                     <TableHead>Telepon</TableHead>
                     <TableHead className="text-right">Aksi</TableHead>
@@ -389,6 +404,11 @@ export default function SiswaPage() {
                         <Badge variant="outline">{s.kelas}</Badge>
                       </TableCell>
                       <TableCell>{s.mataPelajaran || '-'}</TableCell>
+                      <TableCell>
+                        {s.tanggalMasuk ? new Date(s.tanggalMasuk).toLocaleDateString('id-ID', {
+                          day: 'numeric', month: 'long', year: 'numeric'
+                        }) : '-'}
+                      </TableCell>
                       <TableCell>{s.jenisKelamin || '-'}</TableCell>
                       <TableCell>{s.telepon || '-'}</TableCell>
                       <TableCell className="text-right">
