@@ -1,5 +1,5 @@
 
-import { NextResponse } from 'next/next.server'
+import { NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
 import { v4 as uuidv4 } from 'uuid'
 

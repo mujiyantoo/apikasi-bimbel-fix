@@ -109,10 +109,13 @@ export default function SiswaPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSubmitting(true)
+    console.log('Starting submission...', formData);
 
     try {
       const url = editingSiswa ? `/api/siswa/${editingSiswa.id}` : '/api/siswa'
       const method = editingSiswa ? 'PUT' : 'POST'
+
+      console.log(`Sending ${method} request to ${url} with data:`, formData);
 
       const res = await fetch(url, {
         method,
@@ -120,7 +123,9 @@ export default function SiswaPage() {
         body: JSON.stringify(formData)
       })
 
+      console.log('Response status:', res.status);
       const data = await res.json()
+      console.log('Response data:', data);
 
       if (!res.ok) {
         throw new Error(data.error || 'Terjadi kesalahan')
@@ -129,8 +134,10 @@ export default function SiswaPage() {
       toast.success(editingSiswa ? 'Siswa berhasil diupdate' : 'Siswa berhasil ditambahkan')
       setIsDialogOpen(false)
       resetForm()
-      fetchSiswa()
+      await fetchSiswa() // Ensure this completes
+      console.log('Refreshed student list');
     } catch (error) {
+      console.error('Submission error:', error);
       toast.error(error.message)
     } finally {
       setSubmitting(false)
