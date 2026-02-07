@@ -23,7 +23,8 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 
-const kelasOptions = ['7A', '7B', '8A', '8B', '9A', '9B', '10 IPA', '10 IPS', '11 IPA', '11 IPS', '12 IPA', '12 IPS']
+const kelasOptions = ['TK', '1 SD', '2 SD', '3 SD', '4 SD', '5 SD', '6 SD', '7 SMP', '8 SMP', '9 SMP', '10 SMA', '11 SMA', '12 SMA']
+const mataPelajaranOptions = ['Matematika', 'IPA', 'IPS', 'Bahasa Indonesia', 'Bahasa Inggris', 'PKN']
 
 export default function SiswaPage() {
   const [siswa, setSiswa] = useState([])
@@ -37,6 +38,7 @@ export default function SiswaPage() {
     nama: '',
     nis: '',
     kelas: '',
+    mataPelajaran: '',
     jenisKelamin: '',
     alamat: '',
     telepon: ''
@@ -74,6 +76,7 @@ export default function SiswaPage() {
       nama: '',
       nis: '',
       kelas: '',
+      mataPelajaran: '',
       jenisKelamin: '',
       alamat: '',
       telepon: ''
@@ -88,6 +91,7 @@ export default function SiswaPage() {
         nama: siswaData.nama,
         nis: siswaData.nis,
         kelas: siswaData.kelas,
+        mataPelajaran: siswaData.mataPelajaran || '',
         jenisKelamin: siswaData.jenisKelamin || '',
         alamat: siswaData.alamat || '',
         telepon: siswaData.telepon || ''
@@ -214,6 +218,22 @@ export default function SiswaPage() {
                   <SelectContent>
                     {kelasOptions.map((kelas) => (
                       <SelectItem key={kelas} value={kelas}>{kelas}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="mataPelajaran">Mata Pelajaran *</Label>
+                <Select
+                  value={formData.mataPelajaran}
+                  onValueChange={(value) => setFormData({ ...formData, mataPelajaran: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih mata pelajaran" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mataPelajaranOptions.map((mp) => (
+                      <SelectItem key={mp} value={mp}>{mp}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -352,6 +372,7 @@ export default function SiswaPage() {
                     <TableHead>Nama</TableHead>
                     <TableHead>NIS</TableHead>
                     <TableHead>Kelas</TableHead>
+                    <TableHead>Mata Pelajaran</TableHead>
                     <TableHead>Jenis Kelamin</TableHead>
                     <TableHead>Telepon</TableHead>
                     <TableHead className="text-right">Aksi</TableHead>
@@ -367,6 +388,7 @@ export default function SiswaPage() {
                       <TableCell>
                         <Badge variant="outline">{s.kelas}</Badge>
                       </TableCell>
+                      <TableCell>{s.mataPelajaran || '-'}</TableCell>
                       <TableCell>{s.jenisKelamin || '-'}</TableCell>
                       <TableCell>{s.telepon || '-'}</TableCell>
                       <TableCell className="text-right">
