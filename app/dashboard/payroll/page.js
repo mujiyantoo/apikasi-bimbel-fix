@@ -51,9 +51,9 @@ export default function PayrollPage() {
             if (!res.ok) throw new Error('Gagal memuat data pegawai')
             const data = await res.json()
 
-            const eligibleRoles = ['Guru', 'Tutor', 'Admin', 'Keuangan', 'Pimpinan', 'Staff']
+            const eligibleRoles = ['guru', 'tutor', 'admin', 'keuangan', 'pimpinan', 'staff']
             const eligiblePegawai = Array.isArray(data)
-                ? data.filter(p => eligibleRoles.includes(p.jabatan))
+                ? data.filter(p => p.jabatan && eligibleRoles.includes(p.jabatan.toLowerCase()))
                 : []
 
             setPegawai(eligiblePegawai)
@@ -61,9 +61,10 @@ export default function PayrollPage() {
             // Initialize mock payroll data if empty
             const initialPayroll = {}
             eligiblePegawai.forEach(p => {
+                const jabatan = p.jabatan ? p.jabatan.toLowerCase() : ''
                 initialPayroll[p.id] = {
-                    gajiPokok: p.jabatan === 'Pimpinan' ? 5000000 : p.jabatan === 'Guru' ? 3000000 : 2500000,
-                    tunjangan: p.jabatan === 'Guru' ? 500000 : 200000,
+                    gajiPokok: jabatan === 'pimpinan' ? 5000000 : jabatan.includes('guru') ? 3000000 : 2500000,
+                    tunjangan: jabatan.includes('guru') ? 500000 : 200000,
                     jamMengajar: 0,
                     jumlahAbsen: 0,
                     status: 'Belum Dibayar',
@@ -268,7 +269,7 @@ export default function PayrollPage() {
 
                                                                     {/* Input Fields */}
                                                                     <div className="grid grid-cols-2 gap-4">
-                                                                        {(p.jabatan === 'Guru' || p.jabatan === 'Tutor') && (
+                                                                        {p.jabatan && (p.jabatan.toLowerCase().includes('guru') || p.jabatan.toLowerCase().includes('tutor')) && (
                                                                             <div className="space-y-2">
                                                                                 <Label htmlFor="jamMengajar">Jam Mengajar</Label>
                                                                                 <div className="relative">
@@ -308,7 +309,7 @@ export default function PayrollPage() {
                                                                             <span>{formatCurrency(editForm.tunjangan)}</span>
                                                                         </div>
 
-                                                                        {(p.jabatan === 'Guru' || p.jabatan === 'Tutor') && (
+                                                                        {p.jabatan && (p.jabatan.toLowerCase().includes('guru') || p.jabatan.toLowerCase().includes('tutor')) && (
                                                                             <div className="flex justify-between text-blue-700">
                                                                                 <span>Honorer ({editForm.jamMengajar} jam x {formatCurrency(RATE_JAM_MENGAJAR)}):</span>
                                                                                 <span>+ {formatCurrency(editForm.jamMengajar * RATE_JAM_MENGAJAR)}</span>
