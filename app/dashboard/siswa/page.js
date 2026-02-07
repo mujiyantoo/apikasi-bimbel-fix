@@ -24,7 +24,7 @@ import {
 import Link from 'next/link'
 
 const kelasOptions = ['TK', '1 SD', '2 SD', '3 SD', '4 SD', '5 SD', '6 SD', '7 SMP', '8 SMP', '9 SMP', '10 SMA', '11 SMA', '12 SMA']
-const mataPelajaranOptions = ['Matematika', 'IPA', 'IPS', 'Bahasa Indonesia', 'Bahasa Inggris', 'PKN']
+const mataPelajaranOptions = ['calistung', 'Matematika', 'IPA', 'IPS', 'Bahasa Indonesia', 'Bahasa Inggris', 'PKN']
 
 export default function SiswaPage() {
   const [siswa, setSiswa] = useState([])
