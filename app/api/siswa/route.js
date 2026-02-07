@@ -1,105 +1,137 @@
 
-import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
-import { v4 as uuidv4 } from 'uuid'
+import { NextResponse } from 'next/server';
 
-export async function GET(request) {
-    try {
-        const { searchParams } = new URL(request.url)
-        const search = searchParams.get('search')
-        const kelas = searchParams.get('kelas')
+// ✅ LAZY CONNECTION - hanya connect saat runtime, BUKAN build time
+let mongoClient = null;
+let mongoDb = null;
 
-        const client = await clientPromise
-        const db = client.db(process.env.DB_NAME)
+async function getMongoConnection() {
+  if (!process.env.MONGODB_URI) {
+    return null;
+  }
 
-        let query = {}
+  const uri = process.env.MONGODB_URI.trim();
+  if (!uri.startsWith('mongodb://') && !uri.startsWith('mongodb+srv://')) {
+    console.warn('Invalid MongoDB URI format');
+    return null;
+  }
 
-        if (search) {
-            query.$or = [
-                { nama: { $regex: search, $options: 'i' } },
-                { nis: { $regex: search, $options: 'i' } }
-            ]
-        }
+  if (mongoClient && mongoDb) {
+    return { client: mongoClient, db: mongoDb };
+  }
 
-        if (kelas && kelas !== 'all') {
-            query.kelas = kelas
-        }
+  try {
+    const { MongoClient } = await import('mongodb');
+    
+    const client = new MongoClient(uri, {
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000,
+    });
 
-        const siswa = await db.collection('siswa').find(query).toArray()
+    await client.connect();
+    const db = client.db();
 
-        // Convert _id to string or remove it if not needed, as it can cause serialization issues in some cases
-        // but usually fine in API responses. Adding 'id' field for consistency if needed.
-        const formattedSiswa = siswa.map(s => ({
-            ...s,
-            id: s._id.toString()
-        }))
+    mongoClient = client;
+    mongoDb = db;
 
-        return NextResponse.json(formattedSiswa)
-    } catch (error) {
-        console.error('Error fetching/filtering siswa:', error)
-        return NextResponse.json(
-            { error: 'Gagal memuat data siswa' },
-            { status: 500 }
-        )
-    }
+    return { client, db };
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    return null;
+  }
 }
 
-export async function POST(request) {
-    try {
-        const data = await request.json()
-        const { nama, nis, kelas, mataPelajaran, jenisKelamin, telepon, alamat, tanggalMasuk } = data
+// GET /api/siswa - Get all siswa
+export async function GET(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const skip = (page - 1) * limit;
 
-        // Basic validation
-        if (!nama || !nis || !kelas || !mataPelajaran) {
-            return NextResponse.json(
-                { error: 'Nama, NIS, Kelas, dan Mata Pelajaran wajib diisi' },
-                { status: 400 }
-            )
-        }
+    const connection = await getMongoConnection();
 
-        const client = await clientPromise
-        const db = client.db(process.env.DB_NAME)
-
-        console.log('Received POST data request:', { nama, nis, kelas })
-
-        // Check for existing NIS
-        const existingSiswa = await db.collection('siswa').findOne({ nis })
-        if (existingSiswa) {
-            return NextResponse.json(
-                { error: 'NIS sudah terdaftar' },
-                { status: 400 }
-            )
-        }
-
-        const validTanggalMasuk = tanggalMasuk && !isNaN(new Date(tanggalMasuk).getTime())
-            ? new Date(tanggalMasuk)
-            : new Date();
-
-        const newSiswa = {
-            nama,
-            nis,
-            kelas,
-            mataPelajaran,
-            jenisKelamin,
-            telepon,
-            alamat,
-            tanggalMasuk: validTanggalMasuk,
-            createdAt: new Date(),
-            updatedAt: new Date()
-        }
-
-        const result = await db.collection('siswa').insertOne(newSiswa)
-
-        return NextResponse.json(
-            { message: 'Siswa berhasil ditambahkan', id: result.insertedId },
-            { status: 201 }
-        )
-
-    } catch (error) {
-        console.error('Error creating siswa:', error)
-        return NextResponse.json(
-            { error: 'Gagal menambahkan siswa' },
-            { status: 500 }
-        )
+    if (!connection) {
+      return NextResponse.json(
+        { 
+          error: 'Database not configured',
+          message: 'MongoDB connection is not available'
+        },
+        { status: 503 }
+      );
     }
+
+    const { db } = connection;
+
+    const siswa = await db.collection('siswa')
+      .find({})
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+
+    const total = await db.collection('siswa').countDocuments();
+
+    return NextResponse.json({ 
+      success: true, 
+      data: siswa,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('API Error:', error);
+    return NextResponse.json(
+      { 
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/siswa - Create new siswa
+export async function POST(request) {
+  try {
+    const body = await request.json();
+
+    const connection = await getMongoConnection();
+
+    if (!connection) {
+      return NextResponse.json(
+        { error: 'Database not configured' },
+        { status: 503 }
+      );
+    }
+
+    const { db } = connection;
+
+    const result = await db.collection('siswa').insertOne({
+      ...body,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    const newSiswa = await db.collection('siswa').findOne({ _id: result.insertedId });
+
+    return NextResponse.json({ 
+      success: true, 
+      data: newSiswa,
+      message: 'Siswa created successfully'
+    }, { status: 201 });
+
+  } catch (error) {
+    console.error('API Error:', error);
+    return NextResponse.json(
+      { 
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
+      },
+      { status: 500 }
+    );
+  }
 }
