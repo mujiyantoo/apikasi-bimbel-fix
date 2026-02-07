@@ -45,6 +45,13 @@ export default function SiswaPage() {
     telepon: ''
   })
 
+  const formatDateInput = (value) => {
+    if (!value) return ''
+    const parsed = new Date(value)
+    if (Number.isNaN(parsed.getTime())) return ''
+    return parsed.toISOString().split('T')[0]
+  }
+
   const fetchSiswa = async () => {
     setLoading(true)
     try {
@@ -77,7 +84,6 @@ export default function SiswaPage() {
       nama: '',
       nis: '',
       kelas: '',
-      kelas: '',
       mataPelajaran: '',
       tanggalMasuk: '',
       jenisKelamin: '',
@@ -95,7 +101,7 @@ export default function SiswaPage() {
         nis: siswaData.nis,
         kelas: siswaData.kelas,
         mataPelajaran: siswaData.mataPelajaran || '',
-        tanggalMasuk: siswaData.tanggalMasuk || '',
+        tanggalMasuk: formatDateInput(siswaData.tanggalMasuk),
         jenisKelamin: siswaData.jenisKelamin || '',
         alamat: siswaData.alamat || '',
         telepon: siswaData.telepon || ''
