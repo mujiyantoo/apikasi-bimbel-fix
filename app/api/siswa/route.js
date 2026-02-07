@@ -3,6 +3,16 @@ import { NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
 import { v4 as uuidv4 } from 'uuid'
 
+export const dynamic = 'force-dynamic'
+
+const formatSiswa = (siswa) => {
+    const { _id, ...rest } = siswa
+    return {
+        ...rest,
+        id: siswa.id || (_id ? _id.toString() : undefined)
+    }
+}
+
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url)
@@ -25,14 +35,12 @@ export async function GET(request) {
             query.kelas = kelas
         }
 
-        const siswa = await db.collection('siswa').find(query).toArray()
+        const siswa = await db.collection('siswa')
+            .find(query)
+            .sort({ createdAt: -1 })
+            .toArray()
 
-        // Convert _id to string or remove it if not needed, as it can cause serialization issues in some cases
-        // but usually fine in API responses. Adding 'id' field for consistency if needed.
-        const formattedSiswa = siswa.map(s => ({
-            ...s,
-            id: s._id.toString()
-        }))
+        const formattedSiswa = siswa.map((s) => formatSiswa(s))
 
         return NextResponse.json(formattedSiswa)
     } catch (error) {
@@ -73,9 +81,10 @@ export async function POST(request) {
 
         const validTanggalMasuk = tanggalMasuk && !isNaN(new Date(tanggalMasuk).getTime())
             ? new Date(tanggalMasuk)
-            : new Date();
+            : new Date()
 
         const newSiswa = {
+            id: uuidv4(),
             nama,
             nis,
             kelas,
@@ -91,7 +100,7 @@ export async function POST(request) {
         const result = await db.collection('siswa').insertOne(newSiswa)
 
         return NextResponse.json(
-            { message: 'Siswa berhasil ditambahkan', id: result.insertedId },
+            { message: 'Siswa berhasil ditambahkan', id: newSiswa.id },
             { status: 201 }
         )
 
