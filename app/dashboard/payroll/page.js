@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Search, Banknote, Loader2, ArrowLeft, Download, CheckCircle } from 'lucide-react'
+import { Search, Banknote, Loader2, ArrowLeft, CheckCircle, Clock, CalendarX } from 'lucide-react'
 import Link from 'next/link'
 
 export default function PayrollPage() {
@@ -17,11 +17,32 @@ export default function PayrollPage() {
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
     const [processingId, setProcessingId] = useState(null)
-    const [selectedPegawai, setSelectedPegawai] = useState(null)
+
+    // Constants
+    const RATE_JAM_MENGAJAR = 35000 // Rp 35.000 per jam
+    const POTONGAN_ABSEN = 50000 // Rp 50.000 per kehadiran
 
     // Mock payroll data structure extension
-    // In a real app, this would come from a separate table or calculation
     const [payrollData, setPayrollData] = useState({})
+
+    // Temporary state for the dialog form
+    const [editForm, setEditForm] = useState({
+        jamMengajar: 0,
+        jumlahAbsen: 0,
+        gajiPokok: 0,
+        tunjangan: 0
+    })
+
+    // Initialize dialog form when opening
+    const handleOpenDialog = (p) => {
+        const data = payrollData[p.id] || {}
+        setEditForm({
+            jamMengajar: data.jamMengajar || 0,
+            jumlahAbsen: data.jumlahAbsen || 0,
+            gajiPokok: data.gajiPokok || 0,
+            tunjangan: data.tunjangan || 0
+        })
+    }
 
     const fetchPegawai = async () => {
         setLoading(true)
@@ -30,9 +51,7 @@ export default function PayrollPage() {
             if (!res.ok) throw new Error('Gagal memuat data pegawai')
             const data = await res.json()
 
-            // Filter for active employees only, if status exists
-            // For now, filter by relevant roles for payroll
-            const eligibleRoles = ['Guru', 'Tutor', 'Admin', 'Keuangan', 'Pimpinan']
+            const eligibleRoles = ['Guru', 'Tutor', 'Admin', 'Keuangan', 'Pimpinan', 'Staff']
             const eligiblePegawai = Array.isArray(data)
                 ? data.filter(p => eligibleRoles.includes(p.jabatan))
                 : []
@@ -45,12 +64,22 @@ export default function PayrollPage() {
                 initialPayroll[p.id] = {
                     gajiPokok: p.jabatan === 'Pimpinan' ? 5000000 : p.jabatan === 'Guru' ? 3000000 : 2500000,
                     tunjangan: p.jabatan === 'Guru' ? 500000 : 200000,
-                    potongan: 0,
+                    jamMengajar: 0,
+                    jumlahAbsen: 0,
                     status: 'Belum Dibayar',
                     bulan: new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' })
                 }
             })
-            setPayrollData(prev => ({ ...initialPayroll, ...prev }))
+
+            // Merge with existing state (to preserve edits if re-fetching in a real app, though here implementation is simple)
+            setPayrollData(prev => {
+                // Only add if not exists to preserve state during this session
+                const merged = { ...prev }
+                Object.keys(initialPayroll).forEach(key => {
+                    if (!merged[key]) merged[key] = initialPayroll[key]
+                })
+                return merged
+            })
 
         } catch (error) {
             console.error('Error:', error)
@@ -69,13 +98,28 @@ export default function PayrollPage() {
         // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 1500))
 
+        // Save the edited values and mark as paid
         setPayrollData(prev => ({
             ...prev,
-            [id]: { ...prev[id], status: 'Sudah Dibayar', tanggalBayar: new Date().toLocaleDateString('id-ID') }
+            [id]: {
+                ...prev[id],
+                ...editForm, // Save the form values
+                status: 'Sudah Dibayar',
+                tanggalBayar: new Date().toLocaleDateString('id-ID')
+            }
         }))
 
         toast.success('Gaji berhasil diproses')
         setProcessingId(null)
+    }
+
+    // Calculate total dynamically
+    const calculateTotal = (data) => {
+        const pokok = data.gajiPokok || 0
+        const tunjangan = data.tunjangan || 0
+        const lembur = (data.jamMengajar || 0) * RATE_JAM_MENGAJAR
+        const potongan = (data.jumlahAbsen || 0) * POTONGAN_ABSEN
+        return pokok + tunjangan + lembur - potongan
     }
 
     const formatCurrency = (amount) => {
@@ -100,7 +144,7 @@ export default function PayrollPage() {
                         </Link>
                     </div>
                     <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Penggajian (Payroll)</h1>
-                    <p className="text-gray-500 mt-1">Kelola gaji guru dan staf</p>
+                    <p className="text-gray-500 mt-1">Kelola gaji, jam mengajar, dan kehadiran</p>
                 </div>
             </div>
 
@@ -149,7 +193,8 @@ export default function PayrollPage() {
                                         <TableHead>Nama / NIP</TableHead>
                                         <TableHead>Jabatan</TableHead>
                                         <TableHead>Gaji Pokok</TableHead>
-                                        <TableHead>Tunjangan</TableHead>
+                                        <TableHead>Jam Mengajar</TableHead>
+                                        <TableHead>Absen</TableHead>
                                         <TableHead>Total Penerimaan</TableHead>
                                         <TableHead>Status</TableHead>
                                         <TableHead className="text-right">Aksi</TableHead>
@@ -157,8 +202,10 @@ export default function PayrollPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {filteredPegawai.map((p) => {
-                                        const payroll = payrollData[p.id] || { gajiPokok: 0, tunjangan: 0, status: '-' }
-                                        const total = (payroll.gajiPokok || 0) + (payroll.tunjangan || 0) - (payroll.potongan || 0)
+                                        const payroll = payrollData[p.id] || {
+                                            gajiPokok: 0, tunjangan: 0, jamMengajar: 0, jumlahAbsen: 0, status: '-'
+                                        }
+                                        const total = calculateTotal(payroll)
 
                                         return (
                                             <TableRow key={p.id}>
@@ -172,8 +219,19 @@ export default function PayrollPage() {
                                                 <TableCell className="font-mono text-sm">
                                                     {formatCurrency(payroll.gajiPokok)}
                                                 </TableCell>
-                                                <TableCell className="font-mono text-sm">
-                                                    {formatCurrency(payroll.tunjangan)}
+                                                <TableCell className="text-center">
+                                                    {payroll.jamMengajar > 0 ? (
+                                                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-50">
+                                                            {payroll.jamMengajar} Jam
+                                                        </Badge>
+                                                    ) : '-'}
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    {payroll.jumlahAbsen > 0 ? (
+                                                        <Badge variant="destructive" className="bg-red-50 text-red-700 hover:bg-red-50 border-red-200">
+                                                            {payroll.jumlahAbsen} Hari
+                                                        </Badge>
+                                                    ) : '-'}
                                                 </TableCell>
                                                 <TableCell className="font-mono font-bold text-green-700">
                                                     {formatCurrency(total)}
@@ -191,34 +249,85 @@ export default function PayrollPage() {
                                                             Selesai
                                                         </Button>
                                                     ) : (
-                                                        <Dialog>
+                                                        <Dialog onOpenChange={(open) => {
+                                                            if (open) handleOpenDialog(p)
+                                                        }}>
                                                             <DialogTrigger asChild>
                                                                 <Button size="sm" className="bg-green-600 hover:bg-green-700">
                                                                     Proses
                                                                 </Button>
                                                             </DialogTrigger>
-                                                            <DialogContent>
+                                                            <DialogContent className="max-w-lg">
                                                                 <DialogHeader>
                                                                     <DialogTitle>Konfirmasi Pembayaran Gaji</DialogTitle>
                                                                     <DialogDescription>
-                                                                        Anda akan memproses pembayaran gaji untuk <strong>{p.nama}</strong> senilai <strong>{formatCurrency(total)}</strong>.
+                                                                        Sesuaikan kehadiran dan jam mengajar untuk <strong>{p.nama}</strong>.
                                                                     </DialogDescription>
                                                                 </DialogHeader>
                                                                 <div className="space-y-4 py-4">
+
+                                                                    {/* Input Fields */}
+                                                                    <div className="grid grid-cols-2 gap-4">
+                                                                        {(p.jabatan === 'Guru' || p.jabatan === 'Tutor') && (
+                                                                            <div className="space-y-2">
+                                                                                <Label htmlFor="jamMengajar">Jam Mengajar</Label>
+                                                                                <div className="relative">
+                                                                                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                                                                    <Input
+                                                                                        id="jamMengajar"
+                                                                                        type="number"
+                                                                                        className="pl-9"
+                                                                                        value={editForm.jamMengajar}
+                                                                                        onChange={(e) => setEditForm({ ...editForm, jamMengajar: Number(e.target.value) })}
+                                                                                    />
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                        <div className="space-y-2">
+                                                                            <Label htmlFor="jumlahAbsen">Absen (Hari)</Label>
+                                                                            <div className="relative">
+                                                                                <CalendarX className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                                                                <Input
+                                                                                    id="jumlahAbsen"
+                                                                                    type="number"
+                                                                                    className="pl-9"
+                                                                                    value={editForm.jumlahAbsen}
+                                                                                    onChange={(e) => setEditForm({ ...editForm, jumlahAbsen: Number(e.target.value) })}
+                                                                                />
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
                                                                     <div className="bg-gray-50 p-4 rounded-md space-y-2 text-sm">
                                                                         <div className="flex justify-between">
                                                                             <span>Gaji Pokok:</span>
-                                                                            <span>{formatCurrency(payroll.gajiPokok)}</span>
+                                                                            <span>{formatCurrency(editForm.gajiPokok)}</span>
                                                                         </div>
                                                                         <div className="flex justify-between">
                                                                             <span>Tunjangan:</span>
-                                                                            <span>{formatCurrency(payroll.tunjangan)}</span>
+                                                                            <span>{formatCurrency(editForm.tunjangan)}</span>
                                                                         </div>
-                                                                        <div className="border-t pt-2 mt-2 font-bold flex justify-between">
+
+                                                                        {(p.jabatan === 'Guru' || p.jabatan === 'Tutor') && (
+                                                                            <div className="flex justify-between text-blue-700">
+                                                                                <span>Honorer ({editForm.jamMengajar} jam x {formatCurrency(RATE_JAM_MENGAJAR)}):</span>
+                                                                                <span>+ {formatCurrency(editForm.jamMengajar * RATE_JAM_MENGAJAR)}</span>
+                                                                            </div>
+                                                                        )}
+
+                                                                        {editForm.jumlahAbsen > 0 && (
+                                                                            <div className="flex justify-between text-red-700">
+                                                                                <span>Potongan Absen ({editForm.jumlahAbsen} hari):</span>
+                                                                                <span>- {formatCurrency(editForm.jumlahAbsen * POTONGAN_ABSEN)}</span>
+                                                                            </div>
+                                                                        )}
+
+                                                                        <div className="border-t pt-2 mt-2 font-bold flex justify-between text-base">
                                                                             <span>Total Transfer:</span>
-                                                                            <span>{formatCurrency(total)}</span>
+                                                                            <span>{formatCurrency(calculateTotal(editForm))}</span>
                                                                         </div>
                                                                     </div>
+
                                                                     <Button
                                                                         className="w-full bg-green-600 hover:bg-green-700"
                                                                         onClick={() => handleProcessPayment(p.id)}
