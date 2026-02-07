@@ -25,13 +25,14 @@ export async function GET(request) {
             query.kelas = kelas
         }
 
-        const siswa = await db.collection('siswa').find(query).toArray()
+        const siswa = await db.collection('siswa')
+            .find(query)
+            .sort({ createdAt: -1 })
+            .toArray()
 
-        // Convert _id to string or remove it if not needed, as it can cause serialization issues in some cases
-        // but usually fine in API responses. Adding 'id' field for consistency if needed.
-        const formattedSiswa = siswa.map(s => ({
-            ...s,
-            id: s._id.toString()
+        const formattedSiswa = siswa.map(({ _id, id, ...rest }) => ({
+            ...rest,
+            id: id || _id.toString()
         }))
 
         return NextResponse.json(formattedSiswa)
@@ -75,14 +76,16 @@ export async function POST(request) {
             ? new Date(tanggalMasuk)
             : new Date();
 
+        const siswaId = uuidv4()
         const newSiswa = {
+            id: siswaId,
             nama,
             nis,
             kelas,
             mataPelajaran,
-            jenisKelamin,
-            telepon,
-            alamat,
+            jenisKelamin: jenisKelamin || '',
+            telepon: telepon || '',
+            alamat: alamat || '',
             tanggalMasuk: validTanggalMasuk,
             createdAt: new Date(),
             updatedAt: new Date()
@@ -90,8 +93,16 @@ export async function POST(request) {
 
         const result = await db.collection('siswa').insertOne(newSiswa)
 
+        await db.collection('activities').insertOne({
+            id: uuidv4(),
+            type: 'siswa',
+            action: 'create',
+            description: `Siswa baru ditambahkan: ${nama}`,
+            createdAt: new Date()
+        })
+
         return NextResponse.json(
-            { message: 'Siswa berhasil ditambahkan', id: result.insertedId },
+            { message: 'Siswa berhasil ditambahkan', id: siswaId, insertedId: result.insertedId },
             { status: 201 }
         )
 
