@@ -38,7 +38,6 @@ export default function SiswaPage() {
     nama: '',
     nis: '',
     kelas: '',
-    kelas: '',
     mataPelajaran: '',
     tanggalMasuk: '',
     jenisKelamin: '',

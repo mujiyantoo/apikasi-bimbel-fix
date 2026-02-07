@@ -60,6 +60,8 @@ export async function POST(request) {
         const client = await clientPromise
         const db = client.db(process.env.DB_NAME)
 
+        console.log('Received POST data request:', { nama, nis, kelas })
+
         // Check for existing NIS
         const existingSiswa = await db.collection('siswa').findOne({ nis })
         if (existingSiswa) {
@@ -69,6 +71,10 @@ export async function POST(request) {
             )
         }
 
+        const validTanggalMasuk = tanggalMasuk && !isNaN(new Date(tanggalMasuk).getTime())
+            ? new Date(tanggalMasuk)
+            : new Date();
+
         const newSiswa = {
             nama,
             nis,
@@ -77,7 +83,7 @@ export async function POST(request) {
             jenisKelamin,
             telepon,
             alamat,
-            tanggalMasuk: new Date(tanggalMasuk), // Store as Date object
+            tanggalMasuk: validTanggalMasuk,
             createdAt: new Date(),
             updatedAt: new Date()
         }
