@@ -1,0 +1,96 @@
+/**
+ * COPY FILE INI KE: app/api/pembayaran/route.js
+ * 
+ * GANTI SELURUH ISI FILE dengan kode di bawah ini
+ */
+
+import { NextResponse } from 'next/server';
+import { getMongoConnection } from '@/lib/mongodb';
+
+// GET /api/pembayaran - Get all pembayaran
+export async function GET(request) {
+  try {
+    const connection = await getMongoConnection();
+
+    if (!connection) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Database not configured',
+          message: 'MongoDB connection is not available',
+          data: []
+        },
+        { status: 503 }
+      );
+    }
+
+    const { db } = connection;
+
+    const pembayaran = await db.collection('pembayaran')
+      .find({})
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    return NextResponse.json({ 
+      success: true, 
+      data: pembayaran 
+    });
+  } catch (error) {
+    console.error('❌ GET /api/pembayaran Error:', error);
+    return NextResponse.json(
+      { 
+        success: false,
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong',
+        data: []
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/pembayaran - Create new pembayaran
+export async function POST(request) {
+  try {
+    const body = await request.json();
+    const connection = await getMongoConnection();
+
+    if (!connection) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Database not configured',
+          message: 'MongoDB connection is not available'
+        },
+        { status: 503 }
+      );
+    }
+
+    const { db } = connection;
+
+    const pembayaranData = {
+      ...body,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const result = await db.collection('pembayaran').insertOne(pembayaranData);
+    const newPembayaran = await db.collection('pembayaran').findOne({ _id: result.insertedId });
+
+    return NextResponse.json({ 
+      success: true, 
+      data: newPembayaran,
+      message: 'Pembayaran created successfully'
+    }, { status: 201 });
+  } catch (error) {
+    console.error('❌ POST /api/pembayaran Error:', error);
+    return NextResponse.json(
+      { 
+        success: false,
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
+      },
+      { status: 500 }
+    );
+  }
+}
