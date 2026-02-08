@@ -49,6 +49,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchStats()
+
+    // Auto-refresh when window gains focus (e.g., after returning from siswa page)
+    const handleFocus = () => fetchStats()
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
   }, [])
 
   const formatCurrency = (amount) => {

@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
 import { v4 as uuidv4 } from 'uuid'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url)
@@ -89,6 +91,13 @@ export async function POST(request) {
         }
 
         const result = await db.collection('siswa').insertOne(newSiswa)
+
+        // Log activity for dashboard
+        await db.collection('activities').insertOne({
+            type: 'siswa',
+            description: `Siswa baru ditambahkan: ${nama} (${kelas})`,
+            createdAt: new Date()
+        })
 
         return NextResponse.json(
             { message: 'Siswa berhasil ditambahkan', id: result.insertedId },
