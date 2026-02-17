@@ -22,12 +22,14 @@ import {
   Menu,
   X,
   ChevronRight,
-  Banknote
+  Banknote,
+  ClipboardList
 } from 'lucide-react'
 
 const menuItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['Admin', 'Pimpinan', 'Staff'] },
   { name: 'Kesiswaan', href: '/dashboard/siswa', icon: Users, roles: ['Admin', 'Staff'] },
+  { name: 'Pendaftaran', href: '/dashboard/pendaftaran', icon: ClipboardList, roles: ['Admin', 'Staff'] },
   { name: 'Kepegawaian', href: '/dashboard/pegawai', icon: UserCog, roles: ['Admin'] },
   { name: 'Akademik', href: '/dashboard/akademik', icon: BookOpen, roles: ['Admin', 'Staff'] },
   { name: 'Keuangan', href: '/dashboard/keuangan', icon: Wallet, roles: ['Admin', 'Staff'] },
@@ -43,19 +45,16 @@ export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)
   const userRole = session?.user?.role || 'Staff'
 
-  // Helper to normalize string to Title Case (e.g., 'admin' -> 'Admin')
   const normalizeRole = (role) => {
     if (!role) return 'Staff'
     return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase()
   }
 
   const normalizedUserRole = normalizeRole(userRole)
-
   const filteredMenu = menuItems.filter(item => item.roles.includes(normalizedUserRole))
 
   return (
     <>
-      {/* Mobile Menu Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-white shadow-md lg:hidden"
@@ -63,7 +62,6 @@ export function Sidebar() {
         {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
       </button>
 
-      {/* Overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -71,13 +69,11 @@ export function Sidebar() {
         />
       )}
 
-      {/* Sidebar */}
       <aside className={cn(
         "fixed top-0 left-0 z-40 h-screen w-64 bg-white border-r border-gray-200 transition-transform duration-300 lg:translate-x-0",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex flex-col h-full">
-          {/* Logo */}
           <div className="h-auto py-4 flex items-center justify-center px-6 border-b border-gray-200">
             <div className="relative w-full h-16">
               <Image
@@ -90,7 +86,6 @@ export function Sidebar() {
             </div>
           </div>
 
-          {/* Navigation */}
           <ScrollArea className="flex-1 px-3 py-4">
             <nav className="space-y-1">
               {filteredMenu.map((item) => {
@@ -119,7 +114,6 @@ export function Sidebar() {
             </nav>
           </ScrollArea>
 
-          {/* User Profile */}
           <div className="p-4 border-t border-gray-200">
             <div className="flex items-center mb-3">
               <Avatar className="h-10 w-10">
