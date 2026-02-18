@@ -73,19 +73,4 @@ const handler = NextAuth({
 export { handler as GET, handler as POST }
 ```
 
----
 
-## Yang Berubah:
-
-✅ Pakai `clientPromise` dari `/lib/mongodb.js` yang sudah benar
-✅ Pakai `db('bimbel_db')` langsung
-✅ Fix `user._id.toString()` bukan `user.id`
-✅ Hapus hardcoded demo account
-✅ Tambah console.log untuk debugging
-
----
-
-Commit → deploy → **jalankan script `create-users.js` dulu kalau belum** → lalu coba login lagi dengan:
-```
-Email: owner@bimbel.com
-Password: owner123
