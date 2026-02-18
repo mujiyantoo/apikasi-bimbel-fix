@@ -1,5 +1,15 @@
 'use client'
 
+import { RoleProtector } from '@/components/RoleProtector'
+
+export default function akuntansi page() {
+  return (
+    <RoleProtector allowedRoles={['Owner']}>
+      {/* Isi halaman akuntansi yang sudah ada */}
+    </RoleProtector>
+  )
+}
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Calculator, BookOpen, FileSpreadsheet, PieChart } from 'lucide-react'
