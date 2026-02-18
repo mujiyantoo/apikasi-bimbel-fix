@@ -27,31 +27,25 @@ import {
 } from 'lucide-react'
 
 const menuItems = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['Admin', 'Pimpinan', 'Staff'] },
-  { name: 'Kesiswaan', href: '/dashboard/siswa', icon: Users, roles: ['Admin', 'Staff'] },
-  { name: 'Pendaftaran', href: '/dashboard/pendaftaran', icon: ClipboardList, roles: ['Admin', 'Staff'] },
-  { name: 'Kepegawaian', href: '/dashboard/pegawai', icon: UserCog, roles: ['Admin'] },
-  { name: 'Akademik', href: '/dashboard/akademik', icon: BookOpen, roles: ['Admin', 'Staff'] },
-  { name: 'Keuangan', href: '/dashboard/keuangan', icon: Wallet, roles: ['Admin', 'Staff'] },
-  { name: 'Akuntansi', href: '/dashboard/akuntansi', icon: Calculator, roles: ['Admin'] },
-  { name: 'Pimpinan', href: '/dashboard/pimpinan', icon: Crown, roles: ['Admin', 'Pimpinan'] },
-  { name: 'Laporan', href: '/dashboard/laporan', icon: FileText, roles: ['Admin', 'Pimpinan'] },
-  { name: 'Payroll', href: '/dashboard/payroll', icon: Banknote, roles: ['Admin', 'Pimpinan'] },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['Owner', 'Admin'] },
+  { name: 'Pendaftaran', href: '/dashboard/pendaftaran', icon: ClipboardList, roles: ['Owner', 'Admin'] },
+  { name: 'Kesiswaan', href: '/dashboard/siswa', icon: Users, roles: ['Owner'] },
+  { name: 'Kepegawaian', href: '/dashboard/pegawai', icon: UserCog, roles: ['Owner', 'Admin'] },
+  { name: 'Akademik', href: '/dashboard/akademik', icon: BookOpen, roles: ['Owner', 'Admin'] },
+  { name: 'Keuangan', href: '/dashboard/keuangan', icon: Wallet, roles: ['Owner', 'Admin'] },
+  { name: 'Akuntansi', href: '/dashboard/akuntansi', icon: Calculator, roles: ['Owner'] },
+  { name: 'Pimpinan', href: '/dashboard/pimpinan', icon: Crown, roles: ['Owner'] },
+  { name: 'Laporan', href: '/dashboard/laporan', icon: FileText, roles: ['Owner'] },
+  { name: 'Payroll', href: '/dashboard/payroll', icon: Banknote, roles: ['Owner', 'Admin'] },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
   const { data: session } = useSession()
   const [isOpen, setIsOpen] = useState(false)
-  const userRole = session?.user?.role || 'Staff'
+  const userRole = session?.user?.role || 'Admin'
 
-  const normalizeRole = (role) => {
-    if (!role) return 'Staff'
-    return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase()
-  }
-
-  const normalizedUserRole = normalizeRole(userRole)
-  const filteredMenu = menuItems.filter(item => item.roles.includes(normalizedUserRole))
+  const filteredMenu = menuItems.filter(item => item.roles.includes(userRole))
 
   return (
     <>
@@ -117,7 +111,10 @@ export function Sidebar() {
           <div className="p-4 border-t border-gray-200">
             <div className="flex items-center mb-3">
               <Avatar className="h-10 w-10">
-                <AvatarFallback className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white">
+                <AvatarFallback className={cn(
+                  "text-white font-bold",
+                  userRole === 'Owner' ? "bg-gradient-to-br from-purple-600 to-pink-600" : "bg-gradient-to-br from-blue-600 to-indigo-600"
+                )}>
                   {session?.user?.name?.charAt(0) || 'U'}
                 </AvatarFallback>
               </Avatar>
@@ -125,8 +122,11 @@ export function Sidebar() {
                 <p className="text-sm font-medium text-gray-900 truncate">
                   {session?.user?.name || 'User'}
                 </p>
-                <p className="text-xs text-gray-500 truncate">
-                  {session?.user?.role || 'Role'}
+                <p className={cn(
+                  "text-xs font-semibold truncate",
+                  userRole === 'Owner' ? "text-purple-600" : "text-blue-600"
+                )}>
+                  {userRole}
                 </p>
               </div>
             </div>
