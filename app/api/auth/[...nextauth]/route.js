@@ -1,19 +1,7 @@
 import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import { MongoClient } from 'mongodb'
+import clientPromise from '@/lib/mongodb'
 import bcrypt from 'bcryptjs'
-
-let client
-let db
-
-async function connectToMongo() {
-  if (!client) {
-    client = new MongoClient(process.env.MONGO_URL)
-    await client.connect()
-    db = client.db(process.env.DB_NAME)
-  }
-  return db
-}
 
 const handler = NextAuth({
   providers: [
@@ -25,34 +13,29 @@ const handler = NextAuth({
       },
       async authorize(credentials) {
         try {
+          console.log('Login attempt:', { email: credentials?.email })
 
-          console.log('Login attempt:', { email: credentials?.email, password: credentials?.password ? '***' : undefined })
-
-          // Hardcoded demo account
-          if (credentials.email === 'admin@bimbel.com' && credentials.password === 'admin123') {
-            return {
-              id: 'demo-user-id',
-              email: 'admin@bimbel.com',
-              name: 'Demo Admin',
-              role: 'admin'
-            }
-          }
-
-          const db = await connectToMongo()
+          const client = await clientPromise
+          const db = client.db('bimbel_db')
+          
           const user = await db.collection('users').findOne({ email: credentials.email })
 
           if (!user) {
+            console.log('User not found')
             return null
           }
 
           const isValid = await bcrypt.compare(credentials.password, user.password)
 
           if (!isValid) {
+            console.log('Invalid password')
             return null
           }
 
+          console.log('Login success:', { email: user.email, role: user.role })
+
           return {
-            id: user.id,
+            id: user._id.toString(),
             email: user.email,
             name: user.name,
             role: user.role
@@ -88,3 +71,21 @@ const handler = NextAuth({
 })
 
 export { handler as GET, handler as POST }
+```
+
+---
+
+## Yang Berubah:
+
+✅ Pakai `clientPromise` dari `/lib/mongodb.js` yang sudah benar
+✅ Pakai `db('bimbel_db')` langsung
+✅ Fix `user._id.toString()` bukan `user.id`
+✅ Hapus hardcoded demo account
+✅ Tambah console.log untuk debugging
+
+---
+
+Commit → deploy → **jalankan script `create-users.js` dulu kalau belum** → lalu coba login lagi dengan:
+```
+Email: owner@bimbel.com
+Password: owner123
