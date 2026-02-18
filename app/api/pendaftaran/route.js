@@ -3,6 +3,17 @@ import clientPromise from '@/lib/mongodb'
 
 export const dynamic = 'force-dynamic'
 
+// Tambah CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+}
+
+export async function OPTIONS(request) {
+  return NextResponse.json({}, { headers: corsHeaders })
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -30,10 +41,10 @@ export async function GET(request) {
       id: p._id.toString()
     }))
 
-    return NextResponse.json(formatted)
+    return NextResponse.json(formatted, { headers: corsHeaders })
   } catch (error) {
     console.error('Error fetching pendaftaran:', error)
-    return NextResponse.json({ error: 'Gagal memuat data pendaftaran' }, { status: 500 })
+    return NextResponse.json({ error: 'Gagal memuat data pendaftaran' }, { status: 500, headers: corsHeaders })
   }
 }
 
@@ -61,11 +72,11 @@ export async function POST(request) {
 
     return NextResponse.json(
       { message: 'Pendaftaran berhasil disimpan', id: result.insertedId },
-      { status: 201 }
+      { status: 201, headers: corsHeaders }
     )
   } catch (error) {
     console.error('Error saving pendaftaran:', error)
-    return NextResponse.json({ error: 'Gagal menyimpan pendaftaran' }, { status: 500 })
+    return NextResponse.json({ error: 'Gagal menyimpan pendaftaran' }, { status: 500, headers: corsHeaders })
   }
 }
 
@@ -83,10 +94,10 @@ export async function PUT(request) {
       { $set: { status, updatedAt: new Date() } }
     )
 
-    return NextResponse.json({ message: 'Status berhasil diupdate' })
+    return NextResponse.json({ message: 'Status berhasil diupdate' }, { headers: corsHeaders })
   } catch (error) {
     console.error('Error updating pendaftaran:', error)
-    return NextResponse.json({ error: 'Gagal update status' }, { status: 500 })
+    return NextResponse.json({ error: 'Gagal update status' }, { status: 500, headers: corsHeaders })
   }
 }
 
@@ -101,9 +112,9 @@ export async function DELETE(request) {
 
     await db.collection('pendaftaran').deleteOne({ _id: new ObjectId(id) })
 
-    return NextResponse.json({ message: 'Data pendaftaran berhasil dihapus' })
+    return NextResponse.json({ message: 'Data pendaftaran berhasil dihapus' }, { headers: corsHeaders })
   } catch (error) {
     console.error('Error deleting pendaftaran:', error)
-    return NextResponse.json({ error: 'Gagal menghapus pendaftaran' }, { status: 500 })
+    return NextResponse.json({ error: 'Gagal menghapus pendaftaran' }, { status: 500, headers: corsHeaders })
   }
 }
