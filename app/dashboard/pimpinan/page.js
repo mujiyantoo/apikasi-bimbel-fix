@@ -1,5 +1,15 @@
 'use client'
 
+import { RoleProtector } from '@/components/RoleProtector'
+
+export default function PimpinanPage() {
+  return (
+    <RoleProtector allowedRoles={['Owner']}>
+      {/* Isi halaman pimpinan yang sudah ada */}
+    </RoleProtector>
+  )
+}
+
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
