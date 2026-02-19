@@ -3,7 +3,6 @@ import clientPromise from '@/lib/mongodb'
 
 export const dynamic = 'force-dynamic'
 
-// Tambah CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -52,14 +51,12 @@ export async function POST(request) {
   try {
     const data = await request.json()
 
-    // Ambil IP address
     const forwarded = request.headers.get('x-forwarded-for')
     const ip = forwarded ? forwarded.split(',')[0] : request.headers.get('x-real-ip') || 'unknown'
 
     const client = await clientPromise
     const db = client.db('bimbel_db')
 
-    // Cek berapa kali IP ini sudah daftar
     const countFromIP = await db.collection('pendaftaran').countDocuments({ ip_address: ip })
 
     if (countFromIP >= 2) {
@@ -92,5 +89,52 @@ export async function POST(request) {
   } catch (error) {
     console.error('Error saving pendaftaran:', error)
     return NextResponse.json({ error: 'Gagal menyimpan pendaftaran' }, { status: 500, headers: corsHeaders })
+  }
+}
+
+export async function PUT(request) {
+  try {
+    const data = await request.json()
+    const { id, status } = data
+
+    const { ObjectId } = await import('mongodb')
+    const client = await clientPromise
+    const db = client.db('bimbel_db')
+
+    await db.collection('pendaftaran').updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { status, updatedAt: new Date() } }
+    )
+
+    return NextResponse.json({ message: 'Status berhasil diupdate' }, { headers: corsHeaders })
+  } catch (error) {
+    console.error('Error updating pendaftaran:', error)
+    return NextResponse.json({ error: 'Gagal update status' }, { status: 500, headers: corsHeaders })
+  }
+}
+
+export async function DELETE(request) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID tidak ditemukan' }, { status: 400, headers: corsHeaders })
+    }
+
+    const { ObjectId } = await import('mongodb')
+    const client = await clientPromise
+    const db = client.db('bimbel_db')
+
+    const result = await db.collection('pendaftaran').deleteOne({ _id: new ObjectId(id) })
+
+    if (result.deletedCount === 0) {
+      return NextResponse.json({ error: 'Data tidak ditemukan' }, { status: 404, headers: corsHeaders })
+    }
+
+    return NextResponse.json({ message: 'Data pendaftaran berhasil dihapus' }, { headers: corsHeaders })
+  } catch (error) {
+    console.error('Error deleting pendaftaran:', error)
+    return NextResponse.json({ error: 'Gagal menghapus pendaftaran' }, { status: 500, headers: corsHeaders })
   }
 }
