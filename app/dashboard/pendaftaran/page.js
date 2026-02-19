@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -8,6 +9,9 @@ import { ArrowLeft, Search, Trash2, CheckCircle, Clock, XCircle, RefreshCw } fro
 import Link from 'next/link'
 
 export default function PendaftaranPage() {
+  const { data: session } = useSession()
+  const userRole = session?.user?.role || 'Admin'
+  
   const [pendaftaran, setPendaftaran] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -52,7 +56,13 @@ export default function PendaftaranPage() {
   }
 
   const handleDelete = async (id) => {
+    if (userRole !== 'Owner') {
+      alert('Hanya Owner yang dapat menghapus data pendaftaran!')
+      return
+    }
+    
     if (!confirm('Yakin hapus data pendaftaran ini?')) return
+    
     try {
       await fetch(`/api/pendaftaran?id=${id}`, { method: 'DELETE' })
       fetchPendaftaran()
@@ -69,7 +79,6 @@ export default function PendaftaranPage() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link href="/dashboard">
@@ -87,7 +96,6 @@ export default function PendaftaranPage() {
         </Button>
       </div>
 
-      {/* Filter & Search */}
       <div className="flex flex-col md:flex-row gap-3">
         <form onSubmit={handleSearch} className="flex gap-2 flex-1">
           <Input
@@ -112,7 +120,6 @@ export default function PendaftaranPage() {
         </select>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-yellow-50 rounded-xl p-4 text-center border border-yellow-200">
           <p className="text-2xl font-bold text-yellow-600">{pendaftaran.filter(p => p.status === 'Baru').length}</p>
@@ -128,7 +135,6 @@ export default function PendaftaranPage() {
         </div>
       </div>
 
-      {/* Tabel */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="p-4 border-b">
           <p className="font-semibold text-gray-700">{pendaftaran.length} total pendaftar</p>
@@ -189,15 +195,17 @@ export default function PendaftaranPage() {
                         >
                           <XCircle className="w-4 h-4" />
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-gray-600 hover:bg-red-50"
-                          onClick={() => handleDelete(item.id)}
-                          title="Hapus"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        {userRole === 'Owner' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-gray-600 hover:bg-red-50"
+                            onClick={() => handleDelete(item.id)}
+                            title="Hapus"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
