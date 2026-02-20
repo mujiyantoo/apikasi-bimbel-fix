@@ -23,7 +23,8 @@ import {
   X,
   ChevronRight,
   Banknote,
-  ClipboardList
+  ClipboardList,
+  Calendar
 } from 'lucide-react'
 
 const menuItems = [
@@ -31,6 +32,7 @@ const menuItems = [
   { name: 'Pendaftaran', href: '/dashboard/pendaftaran', icon: ClipboardList, roles: ['Owner', 'Admin'] },
   { name: 'Kesiswaan', href: '/dashboard/siswa', icon: Users, roles: ['Owner'] },
   { name: 'Kepegawaian', href: '/dashboard/pegawai', icon: UserCog, roles: ['Owner', 'Admin'] },
+  { name: 'Jadwal', href: '/dashboard/jadwal', icon: Calendar, roles: ['Owner', 'Admin'] },
   { name: 'Akademik', href: '/dashboard/akademik', icon: BookOpen, roles: ['Owner', 'Admin'] },
   { name: 'Keuangan', href: '/dashboard/keuangan', icon: Wallet, roles: ['Owner', 'Admin'] },
   { name: 'Akuntansi', href: '/dashboard/akuntansi', icon: Calculator, roles: ['Owner'] },
