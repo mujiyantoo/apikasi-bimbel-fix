@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,13 +33,15 @@ const bulanOptions = [
 const tahunOptions = ['2023', '2024', '2025', '2026']
 
 export default function KeuanganPage() {
-  const [activeTab, setActiveTab] = useState('spp') // spp, tagihan, laporan, pengeluaran
+  const [activeTab, setActiveTab] = useState('spp')
   const [pembayaran, setPembayaran] = useState([])
   const [siswaList, setSiswaList] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const { data: session } = useSession()
+  const userRole = session?.user?.role || 'Admin'
 
   // Form State
   const [formData, setFormData] = useState({
@@ -49,7 +52,7 @@ export default function KeuanganPage() {
     tahun: new Date().getFullYear().toString(),
     jumlah: '',
     status: 'lunas',
-    keterangan: '' // Used for expenses
+    keterangan: ''
   })
 
   // Fetch Data
@@ -97,7 +100,6 @@ export default function KeuanganPage() {
     } else if (activeTab === 'pengeluaran') {
       data = pembayaran.filter(p => p.jenis === 'Pengeluaran')
     }
-    // Laporan uses all data
 
     return data.filter(p =>
       p.namaSiswa?.toLowerCase().includes(search.toLowerCase()) ||
@@ -152,11 +154,9 @@ export default function KeuanganPage() {
     setSubmitting(true)
 
     try {
-      // Prepare payload based on type
       const payload = {
         ...formData,
         jumlah: parseInt(formData.jumlah),
-        // If expense, use 'EXPENSE' ID and description as name
         siswaId: formData.jenis === 'Pengeluaran' ? 'EXPENSE' : formData.siswaId,
         namaSiswa: formData.jenis === 'Pengeluaran' ? formData.keterangan : formData.namaSiswa
       }
@@ -334,7 +334,7 @@ export default function KeuanganPage() {
               <CreditCard className="w-6 h-6 text-blue-600" />
             </div>
             <CardTitle className="text-lg">Pemasukan SPP</CardTitle>
-            <CardDescription>Rp {formatCurrency(stats.income)}</CardDescription>
+            <CardDescription>{formatCurrency(stats.income)}</CardDescription>
           </CardHeader>
         </Card>
 
@@ -347,22 +347,24 @@ export default function KeuanganPage() {
               <Receipt className="w-6 h-6 text-emerald-600" />
             </div>
             <CardTitle className="text-lg">Tagihan Pending</CardTitle>
-            <CardDescription>Rp {formatCurrency(stats.pending)}</CardDescription>
+            <CardDescription>{formatCurrency(stats.pending)}</CardDescription>
           </CardHeader>
         </Card>
 
-        <Card
-          onClick={() => setActiveTab('laporan')}
-          className={`border-0 shadow-md cursor-pointer transition-all ${activeTab === 'laporan' ? 'ring-2 ring-purple-500 bg-purple-50' : 'hover:shadow-lg'}`}
-        >
-          <CardHeader>
-            <div className="p-3 bg-purple-100 rounded-xl w-fit mb-2">
-              <TrendingUp className="w-6 h-6 text-purple-600" />
-            </div>
-            <CardTitle className="text-lg">Saldo Bersih</CardTitle>
-            <CardDescription>Rp {formatCurrency(stats.net)}</CardDescription>
-          </CardHeader>
-        </Card>
+        {userRole === 'Owner' && (
+          <Card
+            onClick={() => setActiveTab('laporan')}
+            className={`border-0 shadow-md cursor-pointer transition-all ${activeTab === 'laporan' ? 'ring-2 ring-purple-500 bg-purple-50' : 'hover:shadow-lg'}`}
+          >
+            <CardHeader>
+              <div className="p-3 bg-purple-100 rounded-xl w-fit mb-2">
+                <TrendingUp className="w-6 h-6 text-purple-600" />
+              </div>
+              <CardTitle className="text-lg">Saldo Bersih</CardTitle>
+              <CardDescription>{formatCurrency(stats.net)}</CardDescription>
+            </CardHeader>
+          </Card>
+        )}
 
         <Card
           onClick={() => setActiveTab('pengeluaran')}
@@ -373,7 +375,7 @@ export default function KeuanganPage() {
               <Wallet className="w-6 h-6 text-amber-600" />
             </div>
             <CardTitle className="text-lg">Pengeluaran</CardTitle>
-            <CardDescription>Rp {formatCurrency(stats.expense)}</CardDescription>
+            <CardDescription>{formatCurrency(stats.expense)}</CardDescription>
           </CardHeader>
         </Card>
       </div>
