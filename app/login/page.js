@@ -47,7 +47,6 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-xl border-0">
         <CardHeader className="text-center space-y-4 pb-2">
 
-          {/* Logo pakai img biasa, tidak perlu import */}
           <div className="mx-auto flex items-center justify-center" style={{ width: 110, height: 110 }}>
             <img
               src="/logo.png"
@@ -118,6 +117,15 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
+
+          {/* Whitespace + Credit */}
+          <div className="mt-6 pt-4 border-t border-gray-100 text-center">
+            <p className="text-xs text-gray-400">
+              UI/UX designed by{' '}
+              <span style={{ color: '#2d7d6f' }} className="font-medium">Mujiyanto</span>
+            </p>
+          </div>
+
         </CardContent>
       </Card>
     </div>
