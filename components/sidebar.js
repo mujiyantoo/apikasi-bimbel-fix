@@ -117,4 +117,31 @@ export function Sidebar() {
               <Avatar className="h-10 w-10">
                 <AvatarFallback className={cn(
                   "text-white font-bold",
-                  userRole === 'Owner
+                  userRole === 'Owner' ? "bg-purple-600" : "bg-blue-500"
+                )}>
+                  {session?.user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="ml-3 overflow-hidden">
+                <p className="text-sm font-semibold text-gray-900 truncate">
+                  {session?.user?.name || 'User'}
+                </p>
+                <p className="text-xs text-gray-500 truncate">
+                  {userRole}
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+              onClick={() => signOut({ callbackUrl: '/login' })}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Keluar
+            </Button>
+          </div>
+        </div>
+      </aside>
+    </>
+  )
+}
