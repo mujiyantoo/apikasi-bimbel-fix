@@ -7,7 +7,7 @@ export async function GET() {
     const client = await clientPromise
     const db = client.db('bimbel_db')
 
-    const newPassword = 'admin123baru'
+    const newPassword = 'admin1389baru'
     const hashed = await bcrypt.hash(newPassword, 10)
 
     await db.collection('users').updateOne(
