@@ -24,7 +24,27 @@ import {
 import Link from 'next/link'
 
 const kelasOptions = ['TK', '1 SD', '2 SD', '3 SD', '4 SD', '5 SD', '6 SD', '7 SMP', '8 SMP', '9 SMP', '10 SMA', '11 SMA', '12 SMA']
-const mataPelajaranOptions = ['calistung', 'Matematika', 'IPA', 'IPS', 'Bahasa Indonesia', 'Bahasa Inggris', 'PKN']
+
+const mataPelajaranByKelas = {
+  'TK': ['Calistung'],
+  '1 SD': ['Matematika', 'IPA', 'IPS', 'PKN', 'Bahasa Indonesia', 'Bahasa Inggris'],
+  '2 SD': ['Matematika', 'IPA', 'IPS', 'PKN', 'Bahasa Indonesia', 'Bahasa Inggris'],
+  '3 SD': ['Matematika', 'IPA', 'IPS', 'PKN', 'Bahasa Indonesia', 'Bahasa Inggris'],
+  '4 SD': ['Matematika', 'IPA', 'IPS', 'PKN', 'Bahasa Indonesia', 'Bahasa Inggris'],
+  '5 SD': ['Matematika', 'IPA', 'IPS', 'PKN', 'Bahasa Indonesia', 'Bahasa Inggris'],
+  '6 SD': ['Matematika', 'IPA', 'IPS', 'PKN', 'Bahasa Indonesia', 'Bahasa Inggris'],
+  '7 SMP': ['Matematika', 'IPA', 'Bahasa Indonesia', 'Bahasa Inggris'],
+  '8 SMP': ['Matematika', 'IPA', 'Bahasa Indonesia', 'Bahasa Inggris'],
+  '9 SMP': ['Matematika', 'IPA', 'Bahasa Indonesia', 'Bahasa Inggris'],
+}
+
+const isSMA = (kelas) => ['10 SMA', '11 SMA', '12 SMA'].includes(kelas)
+
+const getMataPelajaranOptions = (kelas) => {
+  if (!kelas) return []
+  if (isSMA(kelas)) return null // null = input manual
+  return mataPelajaranByKelas[kelas] || []
+}
 
 export default function SiswaPage() {
   const [siswa, setSiswa] = useState([])
@@ -77,7 +97,6 @@ export default function SiswaPage() {
       nama: '',
       nis: '',
       kelas: '',
-      kelas: '',
       mataPelajaran: '',
       tanggalMasuk: '',
       jenisKelamin: '',
@@ -85,6 +104,19 @@ export default function SiswaPage() {
       telepon: ''
     })
     setEditingSiswa(null)
+  }
+
+  const handleKelasChange = (value) => {
+    const options = getMataPelajaranOptions(value)
+    let defaultMapel = ''
+
+    if (value === 'TK') {
+      defaultMapel = 'Calistung'
+    } else if (options && options.length > 0) {
+      defaultMapel = ''
+    }
+
+    setFormData({ ...formData, kelas: value, mataPelajaran: defaultMapel })
   }
 
   const handleOpenDialog = (siswaData = null) => {
@@ -109,13 +141,10 @@ export default function SiswaPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSubmitting(true)
-    console.log('Starting submission...', formData);
 
     try {
       const url = editingSiswa ? `/api/siswa/${editingSiswa.id}` : '/api/siswa'
       const method = editingSiswa ? 'PUT' : 'POST'
-
-      console.log(`Sending ${method} request to ${url} with data:`, formData);
 
       const res = await fetch(url, {
         method,
@@ -123,9 +152,7 @@ export default function SiswaPage() {
         body: JSON.stringify(formData)
       })
 
-      console.log('Response status:', res.status);
       const data = await res.json()
-      console.log('Response data:', data);
 
       if (!res.ok) {
         throw new Error(data.error || 'Terjadi kesalahan')
@@ -134,10 +161,8 @@ export default function SiswaPage() {
       toast.success(editingSiswa ? 'Siswa berhasil diupdate' : 'Siswa berhasil ditambahkan')
       setIsDialogOpen(false)
       resetForm()
-      await fetchSiswa() // Ensure this completes
-      console.log('Refreshed student list');
+      await fetchSiswa()
     } catch (error) {
-      console.error('Submission error:', error);
       toast.error(error.message)
     } finally {
       setSubmitting(false)
@@ -161,6 +186,8 @@ export default function SiswaPage() {
       toast.error(error.message)
     }
   }
+
+  const mataPelajaranOptions = getMataPelajaranOptions(formData.kelas)
 
   return (
     <div className="space-y-6">
@@ -221,7 +248,7 @@ export default function SiswaPage() {
                 <Label htmlFor="kelas">Kelas *</Label>
                 <Select
                   value={formData.kelas}
-                  onValueChange={(value) => setFormData({ ...formData, kelas: value })}
+                  onValueChange={handleKelasChange}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Pilih kelas" />
@@ -233,22 +260,45 @@ export default function SiswaPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="mataPelajaran">Mata Pelajaran *</Label>
-                <Select
-                  value={formData.mataPelajaran}
-                  onValueChange={(value) => setFormData({ ...formData, mataPelajaran: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih mata pelajaran" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mataPelajaranOptions.map((mp) => (
-                      <SelectItem key={mp} value={mp}>{mp}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+
+              {/* Mata Pelajaran - kondisional berdasarkan kelas */}
+              {formData.kelas && (
+                <div className="space-y-2">
+                  <Label htmlFor="mataPelajaran">Mata Pelajaran *</Label>
+                  {formData.kelas === 'TK' ? (
+                    // TK: otomatis Calistung, tidak bisa diubah
+                    <Input value="Calistung" disabled className="bg-gray-100 text-gray-600" />
+                  ) : isSMA(formData.kelas) ? (
+                    // SMA: input manual
+                    <Input
+                      id="mataPelajaran"
+                      value={formData.mataPelajaran}
+                      onChange={(e) => setFormData({ ...formData, mataPelajaran: e.target.value })}
+                      placeholder="Contoh: Fisika, Kimia, Biologi..."
+                      required
+                    />
+                  ) : (
+                    // SD & SMP: dropdown sesuai kelas
+                    <Select
+                      value={formData.mataPelajaran}
+                      onValueChange={(value) => setFormData({ ...formData, mataPelajaran: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih mata pelajaran" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {mataPelajaranOptions.map((mp) => (
+                          <SelectItem key={mp} value={mp}>{mp}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {isSMA(formData.kelas) && (
+                    <p className="text-xs text-gray-400">SMA: isi mata pelajaran secara manual</p>
+                  )}
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="jenisKelamin">Jenis Kelamin</Label>
                 <Select
