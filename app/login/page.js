@@ -108,9 +108,8 @@ export default function LoginPage() {
           
           <div className="mt-6 p-4 bg-gray-50 rounded-lg">
             <p className="text-sm text-gray-600 text-center">
-              <strong>Demo Account:</strong><br />
-              Email: admin@bimbel.com<br />
-              Password: admin123
+              <strong>UI/UX design by Mujiyanto:</strong><br />
+              <br />
             </p>
           </div>
         </CardContent>
