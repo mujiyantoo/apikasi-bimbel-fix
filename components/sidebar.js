@@ -1,3 +1,15 @@
+import { LayoutDashboard, Users, UserCog, BookOpen, Wallet, Calculator, Crown, FileText, LogOut, Menu, X, ChevronRight, Banknote, ClipboardList, Calendar, TrendingUp } from 'lucide-react'
+
+const menuItems = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['Owner', 'Admin'] },
+  { name: 'Pendaftaran', href: '/dashboard/pendaftaran', icon: ClipboardList, roles: ['Owner', 'Admin'] },
+  { name: 'Kesiswaan', href: '/dashboard/siswa', icon: Users, roles: ['Owner'] },
+  { name: 'Kepegawaian', href: '/dashboard/pegawai', icon: UserCog, roles: ['Owner', 'Admin'] },
+  { name: 'Jadwal', href: '/dashboard/jadwal', icon: Calendar, roles: ['Owner', 'Admin'] },
+  { name: 'Kinerja', href: '/dashboard/kinerja', icon: TrendingUp, roles: ['Owner', 'Admin'] }, // TAMBAH INI
+  { name: 'Akademik', href: '/dashboard/akademik', icon: BookOpen, roles: ['Owner', 'Admin'] },
+  // ... sisanya sama
+]
 'use client'
 
 import { useState } from 'react'
