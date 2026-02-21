@@ -7,11 +7,11 @@ export async function GET() {
     const client = await clientPromise
     const db = client.db('bimbel_db')
 
-    const newPassword = 'admin123baru' // ← ganti password baru di sini
+    const newPassword = 'admin123baru'
     const hashed = await bcrypt.hash(newPassword, 10)
 
     await db.collection('users').updateOne(
-      { email: 'admin@bimbel.com' }, // ← ganti dengan email admin kamu
+      { email: 'admin@bimbel.com' },
       { $set: { password: hashed } }
     )
 
@@ -20,4 +20,3 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
-```
