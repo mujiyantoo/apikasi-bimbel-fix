@@ -104,11 +104,15 @@ export default function SiswaPage() {
   const handleOpenDialog = (siswaData = null) => {
     if (siswaData) {
       setEditingSiswa(siswaData)
+      // Gunakan paket otomatis jika bukan SMA
+      const mataPelajaranOtomatis = isSMA(siswaData.kelas)
+        ? siswaData.mataPelajaran || ''
+        : mataPelajaranByKelas[siswaData.kelas] || siswaData.mataPelajaran || ''
       setFormData({
         nama: siswaData.nama,
         nis: siswaData.nis,
         kelas: siswaData.kelas,
-        mataPelajaran: siswaData.mataPelajaran || '',
+        mataPelajaran: mataPelajaranOtomatis,
         tanggalMasuk: siswaData.tanggalMasuk || '',
         jenisKelamin: siswaData.jenisKelamin || '',
         alamat: siswaData.alamat || '',
