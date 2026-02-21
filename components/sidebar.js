@@ -1,15 +1,3 @@
-import { LayoutDashboard, Users, UserCog, BookOpen, Wallet, Calculator, Crown, FileText, LogOut, Menu, X, ChevronRight, Banknote, ClipboardList, Calendar, TrendingUp } from 'lucide-react'
-
-const menuItems = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['Owner', 'Admin'] },
-  { name: 'Pendaftaran', href: '/dashboard/pendaftaran', icon: ClipboardList, roles: ['Owner', 'Admin'] },
-  { name: 'Kesiswaan', href: '/dashboard/siswa', icon: Users, roles: ['Owner'] },
-  { name: 'Kepegawaian', href: '/dashboard/pegawai', icon: UserCog, roles: ['Owner', 'Admin'] },
-  { name: 'Jadwal', href: '/dashboard/jadwal', icon: Calendar, roles: ['Owner', 'Admin'] },
-  { name: 'Kinerja', href: '/dashboard/kinerja', icon: TrendingUp, roles: ['Owner', 'Admin'] }, // TAMBAH INI
-  { name: 'Akademik', href: '/dashboard/akademik', icon: BookOpen, roles: ['Owner', 'Admin'] },
-  // ... sisanya sama
-]
 'use client'
 
 import { useState } from 'react'
@@ -36,7 +24,8 @@ import {
   ChevronRight,
   Banknote,
   ClipboardList,
-  Calendar
+  Calendar,
+  TrendingUp
 } from 'lucide-react'
 
 const menuItems = [
@@ -45,6 +34,7 @@ const menuItems = [
   { name: 'Kesiswaan', href: '/dashboard/siswa', icon: Users, roles: ['Owner'] },
   { name: 'Kepegawaian', href: '/dashboard/pegawai', icon: UserCog, roles: ['Owner', 'Admin'] },
   { name: 'Jadwal', href: '/dashboard/jadwal', icon: Calendar, roles: ['Owner', 'Admin'] },
+  { name: 'Kinerja', href: '/dashboard/kinerja', icon: TrendingUp, roles: ['Owner', 'Admin'] },
   { name: 'Akademik', href: '/dashboard/akademik', icon: BookOpen, roles: ['Owner', 'Admin'] },
   { name: 'Keuangan', href: '/dashboard/keuangan', icon: Wallet, roles: ['Owner', 'Admin'] },
   { name: 'Akuntansi', href: '/dashboard/akuntansi', icon: Calculator, roles: ['Owner'] },
@@ -127,34 +117,4 @@ export function Sidebar() {
               <Avatar className="h-10 w-10">
                 <AvatarFallback className={cn(
                   "text-white font-bold",
-                  userRole === 'Owner' ? "bg-gradient-to-br from-purple-600 to-pink-600" : "bg-gradient-to-br from-blue-600 to-indigo-600"
-                )}>
-                  {session?.user?.name?.charAt(0) || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="ml-3 flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {session?.user?.name || 'User'}
-                </p>
-                <p className={cn(
-                  "text-xs font-semibold truncate",
-                  userRole === 'Owner' ? "text-purple-600" : "text-blue-600"
-                )}>
-                  {userRole}
-                </p>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              className="w-full justify-start text-gray-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50"
-              onClick={() => signOut({ callbackUrl: '/login' })}
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Keluar
-            </Button>
-          </div>
-        </div>
-      </aside>
-    </>
-  )
-}
+                  userRole === 'Owner
