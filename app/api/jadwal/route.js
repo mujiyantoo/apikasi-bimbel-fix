@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
+import { ObjectId } from 'mongodb'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,28 +14,32 @@ export async function GET(request) {
     const db = client.db('bimbel_db')
 
     let query = {}
-    if (hari && hari !== 'all') {
-      query.hari = hari
-    }
-    if (tanggal) {
-      query.tanggal = tanggal
-    }
+    if (hari && hari !== 'all') query.hari = hari
+    if (tanggal) query.tanggal = tanggal
 
     const jadwal = await db.collection('jadwal')
       .find(query)
       .sort({ waktu_mulai: 1 })
       .toArray()
 
-    // Populate data pengajar
     const jadwalWithPengajar = await Promise.all(
       jadwal.map(async (item) => {
-        const { ObjectId } = await import('mongodb')
-        const pengajar = await db.collection('pegawai').findOne({ 
-          _id: new ObjectId(item.pengajar_id) 
-        })
+        let pengajar = null
+        try {
+          // Tangani pengajar_id baik berupa string maupun ObjectId
+          const pengajarId = typeof item.pengajar_id === 'string'
+            ? new ObjectId(item.pengajar_id)
+            : item.pengajar_id
+
+          pengajar = await db.collection('pegawai').findOne({ _id: pengajarId })
+        } catch (e) {
+          console.error('Invalid pengajar_id:', item.pengajar_id)
+        }
+
         return {
           ...item,
           id: item._id.toString(),
+          pengajar_id: item.pengajar_id?.toString(),
           pengajar_nama: pengajar?.nama || 'Tidak diketahui'
         }
       })
@@ -50,18 +55,18 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const data = await request.json()
-
     const client = await clientPromise
     const db = client.db('bimbel_db')
 
+    // Simpan pengajar_id sebagai ObjectId agar konsisten
     const newJadwal = {
       ...data,
+      pengajar_id: new ObjectId(data.pengajar_id),
       createdAt: new Date(),
       updatedAt: new Date()
     }
 
     const result = await db.collection('jadwal').insertOne(newJadwal)
-
     return NextResponse.json(
       { message: 'Jadwal berhasil ditambahkan', id: result.insertedId },
       { status: 201 }
@@ -76,10 +81,13 @@ export async function PUT(request) {
   try {
     const data = await request.json()
     const { id, ...updateData } = data
-
-    const { ObjectId } = await import('mongodb')
     const client = await clientPromise
     const db = client.db('bimbel_db')
+
+    // Pastikan pengajar_id juga disimpan sebagai ObjectId saat update
+    if (updateData.pengajar_id) {
+      updateData.pengajar_id = new ObjectId(updateData.pengajar_id)
+    }
 
     await db.collection('jadwal').updateOne(
       { _id: new ObjectId(id) },
@@ -97,8 +105,6 @@ export async function DELETE(request) {
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
-
-    const { ObjectId } = await import('mongodb')
     const client = await clientPromise
     const db = client.db('bimbel_db')
 
