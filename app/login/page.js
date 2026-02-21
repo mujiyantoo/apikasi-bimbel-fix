@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2 } from 'lucide-react'
-import Image from 'next/image'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -47,17 +46,16 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #e8f5f3 0%, #fff8f0 50%, #e8f5f3 100%)' }}>
       <Card className="w-full max-w-md shadow-xl border-0">
         <CardHeader className="text-center space-y-4 pb-2">
-          {/* Logo */}
-          <div className="mx-auto flex items-center justify-center" style={{ width: 100, height: 100 }}>
-            <Image
+
+          {/* Logo pakai img biasa, tidak perlu import */}
+          <div className="mx-auto flex items-center justify-center" style={{ width: 110, height: 110 }}>
+            <img
               src="/logo.png"
               alt="Logo Bimbel"
-              width={100}
-              height={100}
-              style={{ objectFit: 'contain' }}
-              priority
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
             />
           </div>
+
           <div>
             <CardTitle className="text-2xl font-bold" style={{ color: '#2d7d6f' }}>
               Bimbel Management
@@ -107,9 +105,7 @@ export default function LoginPage() {
             <Button
               type="submit"
               className="w-full h-11 text-white font-medium shadow-md"
-              style={{
-                background: 'linear-gradient(to right, #2d7d6f, #3a9e8d)',
-              }}
+              style={{ background: 'linear-gradient(to right, #2d7d6f, #3a9e8d)' }}
               disabled={loading}
             >
               {loading ? (
