@@ -30,16 +30,6 @@ const isSD = (kelas) => ['1 SD', '2 SD', '3 SD', '4 SD', '5 SD', '6 SD'].include
 const isSMP = (kelas) => ['7 SMP', '8 SMP', '9 SMP'].includes(kelas)
 const isSMA = (kelas) => ['10 SMA', '11 SMA', '12 SMA'].includes(kelas)
 
-const mataPelajaranSD = {
-  'Reguler': 'Matematika, IPA, IPS, PKN, Bahasa Indonesia, Bahasa Inggris',
-  'Privat': 'Matematika, IPA, IPS, PKN, Bahasa Indonesia, Bahasa Inggris (Privat)',
-}
-
-const mataPelajaranSMP = {
-  'Reguler': 'Matematika, IPA, Bahasa Indonesia, Bahasa Inggris',
-  'Privat': 'Matematika, IPA, Bahasa Indonesia, Bahasa Inggris (Privat)',
-}
-
 export default function SiswaPage() {
   const [siswa, setSiswa] = useState([])
   const [loading, setLoading] = useState(true)
@@ -52,7 +42,6 @@ export default function SiswaPage() {
     nama: '',
     nis: '',
     kelas: '',
-    tipeKelas: '',
     mataPelajaran: '',
     tanggalMasuk: '',
     jenisKelamin: '',
@@ -88,7 +77,6 @@ export default function SiswaPage() {
       nama: '',
       nis: '',
       kelas: '',
-      tipeKelas: '',
       mataPelajaran: '',
       tanggalMasuk: '',
       jenisKelamin: '',
@@ -99,14 +87,7 @@ export default function SiswaPage() {
   }
 
   const handleKelasChange = (value) => {
-    setFormData({ ...formData, kelas: value, tipeKelas: '', mataPelajaran: isTK(value) ? 'Calistung' : '' })
-  }
-
-  const handleTipeKelasChange = (value) => {
-    let mapel = ''
-    if (isSD(formData.kelas)) mapel = mataPelajaranSD[value] || ''
-    if (isSMP(formData.kelas)) mapel = mataPelajaranSMP[value] || ''
-    setFormData({ ...formData, tipeKelas: value, mataPelajaran: mapel })
+    setFormData({ ...formData, kelas: value, mataPelajaran: isTK(value) ? 'Calistung' : '' })
   }
 
   const handleOpenDialog = (siswaData = null) => {
@@ -116,7 +97,6 @@ export default function SiswaPage() {
         nama: siswaData.nama,
         nis: siswaData.nis,
         kelas: siswaData.kelas,
-        tipeKelas: siswaData.tipeKelas || '',
         mataPelajaran: siswaData.mataPelajaran || '',
         tanggalMasuk: siswaData.tanggalMasuk || '',
         jenisKelamin: siswaData.jenisKelamin || '',
@@ -242,27 +222,31 @@ export default function SiswaPage() {
                 </Select>
               </div>
 
-              {/* Tipe Kelas: hanya muncul untuk SD dan SMP */}
-              {formData.kelas && (isSD(formData.kelas) || isSMP(formData.kelas)) && (
-                <div className="space-y-2">
-                  <Label>Tipe Kelas *</Label>
-                  <Select value={formData.tipeKelas} onValueChange={handleTipeKelasChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih Reguler atau Privat" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Reguler">Reguler</SelectItem>
-                      <SelectItem value="Privat">Privat</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
               {/* Mata Pelajaran */}
               {formData.kelas && (
                 <div className="space-y-2">
                   <Label htmlFor="mataPelajaran">Mata Pelajaran *</Label>
-                  {isSMA(formData.kelas) ? (
+                  {isTK(formData.kelas) && (
+                    <>
+                      <Input value="Calistung" disabled className="bg-gray-50 text-gray-700 cursor-not-allowed" />
+                      <p className="text-xs text-gray-400">Otomatis terisi: Calistung</p>
+                    </>
+                  )}
+                  {(isSD(formData.kelas) || isSMP(formData.kelas)) && (
+                    <Select
+                      value={formData.mataPelajaran}
+                      onValueChange={(value) => setFormData({ ...formData, mataPelajaran: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih Reguler atau Privat" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Reguler">Reguler</SelectItem>
+                        <SelectItem value="Privat">Privat</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {isSMA(formData.kelas) && (
                     <>
                       <Input
                         id="mataPelajaran"
@@ -272,24 +256,6 @@ export default function SiswaPage() {
                         required
                       />
                       <p className="text-xs text-gray-400">SMA: isi mata pelajaran secara manual</p>
-                    </>
-                  ) : (
-                    <>
-                      <Input
-                        id="mataPelajaran"
-                        value={formData.mataPelajaran}
-                        disabled
-                        className="bg-gray-50 text-gray-700 cursor-not-allowed"
-                      />
-                      {(isSD(formData.kelas) || isSMP(formData.kelas)) && !formData.tipeKelas && (
-                        <p className="text-xs text-amber-500">Pilih tipe kelas terlebih dahulu</p>
-                      )}
-                      {formData.tipeKelas && (
-                        <p className="text-xs text-gray-400">Otomatis terisi sesuai kelas & tipe</p>
-                      )}
-                      {isTK(formData.kelas) && (
-                        <p className="text-xs text-gray-400">Otomatis terisi: Calistung</p>
-                      )}
                     </>
                   )}
                 </div>
@@ -438,7 +404,6 @@ export default function SiswaPage() {
                     <TableHead>Nama</TableHead>
                     <TableHead>NIS</TableHead>
                     <TableHead>Kelas</TableHead>
-                    <TableHead>Tipe</TableHead>
                     <TableHead>Mata Pelajaran</TableHead>
                     <TableHead>Tanggal Masuk</TableHead>
                     <TableHead>Jenis Kelamin</TableHead>
@@ -457,13 +422,16 @@ export default function SiswaPage() {
                         <Badge variant="outline">{s.kelas}</Badge>
                       </TableCell>
                       <TableCell>
-                        {s.tipeKelas ? (
-                          <Badge className={s.tipeKelas === 'Privat' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}>
-                            {s.tipeKelas}
-                          </Badge>
-                        ) : '-'}
+                        {s.mataPelajaran === 'Reguler' ? (
+                          <Badge className="bg-blue-100 text-blue-700">Reguler</Badge>
+                        ) : s.mataPelajaran === 'Privat' ? (
+                          <Badge className="bg-purple-100 text-purple-700">Privat</Badge>
+                        ) : s.mataPelajaran === 'Calistung' ? (
+                          <Badge className="bg-green-100 text-green-700">Calistung</Badge>
+                        ) : (
+                          s.mataPelajaran || '-'
+                        )}
                       </TableCell>
-                      <TableCell className="max-w-xs truncate">{s.mataPelajaran || '-'}</TableCell>
                       <TableCell>
                         {s.tanggalMasuk ? new Date(s.tanggalMasuk).toLocaleDateString('id-ID', {
                           day: 'numeric', month: 'long', year: 'numeric'
