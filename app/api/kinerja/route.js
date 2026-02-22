@@ -4,18 +4,20 @@ import clientPromise from '@/lib/mongodb'
 export const dynamic = 'force-dynamic'
 
 const TARIF = {
-  SD: { reguler: 24000, durasi: 90 },
-  SMP: { reguler: 25000, durasi: 90 },
-  SMA: { reguler: 22000, durasi: 60 }
+  SD: 24000,
+  SMP: 25000,
+  SMA: 22000
 }
 
 function hitungGaji(jenjang, kategori, menitMengajar) {
   const tarif = TARIF[jenjang]
   if (!tarif) return 0
   if (kategori === 'Reguler') {
-    return (menitMengajar / tarif.durasi) * tarif.reguler
+    // Flat per sesi, tidak tergantung menit
+    return tarif
   } else {
-    return (menitMengajar / tarif.durasi) * 0.75 * tarif.reguler
+    // PR: dihitung per menit (tarif / 60 menit × menit mengajar)
+    return Math.round((tarif / 60) * menitMengajar)
   }
 }
 
@@ -51,9 +53,7 @@ export async function GET(request) {
             })
             pengajar_nama = pengajar?.nama || 'Tidak diketahui'
           }
-        } catch (e) {
-          // pengajar_id tidak valid, skip
-        }
+        } catch (e) {}
         return {
           ...item,
           id: item._id.toString(),
