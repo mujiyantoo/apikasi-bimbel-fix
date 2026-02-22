@@ -3,7 +3,6 @@ import clientPromise from '@/lib/mongodb'
 
 export const dynamic = 'force-dynamic'
 
-// Tarif per jenjang
 const TARIF = {
   SD: { reguler: 24000, durasi: 90 },
   SMP: { reguler: 26000, durasi: 90 },
@@ -13,12 +12,9 @@ const TARIF = {
 function hitungGaji(jenjang, kategori, menitMengajar) {
   const tarif = TARIF[jenjang]
   if (!tarif) return 0
-
   if (kategori === 'Reguler') {
-    // Reguler: (menit / durasi standar) × tarif
     return (menitMengajar / tarif.durasi) * tarif.reguler
   } else {
-    // PR: (menit / durasi standar) × 75% × tarif
     return (menitMengajar / tarif.durasi) * 0.75 * tarif.reguler
   }
 }
@@ -31,7 +27,7 @@ export async function GET(request) {
     const tahun = searchParams.get('tahun')
 
     const client = await clientPromise
-    const db = client.db('bimbel_db')
+    const db = client.db(process.env.DB_NAME || 'bimbel_db')
 
     let query = {}
     if (pengajar_id) query.pengajar_id = pengajar_id
@@ -43,17 +39,25 @@ export async function GET(request) {
       .sort({ tanggal: -1 })
       .toArray()
 
-    // Populate pengajar
+    const { ObjectId } = await import('mongodb')
+
     const kinerjaWithPengajar = await Promise.all(
       kinerja.map(async (item) => {
-        const { ObjectId } = await import('mongodb')
-        const pengajar = await db.collection('pegawai').findOne({ 
-          _id: new ObjectId(item.pengajar_id) 
-        })
+        let pengajar_nama = 'Tidak diketahui'
+        try {
+          if (item.pengajar_id && ObjectId.isValid(item.pengajar_id)) {
+            const pengajar = await db.collection('pegawai').findOne({
+              _id: new ObjectId(item.pengajar_id)
+            })
+            pengajar_nama = pengajar?.nama || 'Tidak diketahui'
+          }
+        } catch (e) {
+          // pengajar_id tidak valid, skip
+        }
         return {
           ...item,
           id: item._id.toString(),
-          pengajar_nama: pengajar?.nama || 'Tidak diketahui'
+          pengajar_nama
         }
       })
     )
@@ -70,7 +74,6 @@ export async function POST(request) {
     const data = await request.json()
     const { pengajar_id, tanggal, jam_mulai, jam_selesai, jenjang, kategori, keterangan } = data
 
-    // Hitung durasi dalam menit
     const [jamM, menitM] = jam_mulai.split(':').map(Number)
     const [jamS, menitS] = jam_selesai.split(':').map(Number)
     const totalMenitMulai = jamM * 60 + menitM
@@ -78,19 +81,20 @@ export async function POST(request) {
     const menitMengajar = totalMenitSelesai - totalMenitMulai
 
     if (menitMengajar <= 0) {
-      return NextResponse.json({ error: 'Jam selesai harus lebih besar dari jam mulai' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Jam selesai harus lebih besar dari jam mulai' },
+        { status: 400 }
+      )
     }
 
-    // Hitung gaji
     const gaji = hitungGaji(jenjang, kategori, menitMengajar)
 
-    // Ambil bulan dan tahun dari tanggal
     const tgl = new Date(tanggal)
     const bulan = tgl.getMonth() + 1
     const tahun = tgl.getFullYear()
 
     const client = await clientPromise
-    const db = client.db('bimbel_db')
+    const db = client.db(process.env.DB_NAME || 'bimbel_db')
 
     const newKinerja = {
       pengajar_id,
@@ -125,11 +129,19 @@ export async function DELETE(request) {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 
+    if (!id) {
+      return NextResponse.json({ error: 'ID tidak ditemukan' }, { status: 400 })
+    }
+
     const { ObjectId } = await import('mongodb')
     const client = await clientPromise
-    const db = client.db('bimbel_db')
+    const db = client.db(process.env.DB_NAME || 'bimbel_db')
 
-    await db.collection('kinerja').deleteOne({ _id: new ObjectId(id) })
+    const result = await db.collection('kinerja').deleteOne({ _id: new ObjectId(id) })
+
+    if (result.deletedCount === 0) {
+      return NextResponse.json({ error: 'Data tidak ditemukan' }, { status: 404 })
+    }
 
     return NextResponse.json({ message: 'Kinerja berhasil dihapus' })
   } catch (error) {
