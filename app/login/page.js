@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { signIn } from 'next-auth/react'
+import { signIn, getSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,7 +32,17 @@ export default function LoginPage() {
       if (result?.error) {
         setError('Email atau password salah')
       } else {
-        router.push('/dashboard')
+        // Cek role setelah login berhasil
+        const session = await getSession()
+        const role = session?.user?.role
+
+        if (role === 'Pegawai') {
+          // Pegawai diarahkan ke halaman absensi
+          router.push('/absensi')
+        } else {
+          // Owner dan Admin diarahkan ke dashboard
+          router.push('/dashboard')
+        }
         router.refresh()
       }
     } catch (err) {
@@ -46,7 +56,6 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #e8f5f3 0%, #fff8f0 50%, #e8f5f3 100%)' }}>
       <Card className="w-full max-w-md shadow-xl border-0">
         <CardHeader className="text-center space-y-4 pb-2">
-
           <div className="mx-auto flex items-center justify-center" style={{ width: 110, height: 110 }}>
             <img
               src="/logo.png"
@@ -54,7 +63,6 @@ export default function LoginPage() {
               style={{ width: '100%', height: '100%', objectFit: 'contain' }}
             />
           </div>
-
           <div>
             <CardTitle className="text-2xl font-bold" style={{ color: '#2d7d6f' }}>
               Bimbel Management
@@ -99,35 +107,3 @@ export default function LoginPage() {
                 className="h-11"
                 style={{ borderColor: '#2d7d6f' }}
               />
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full h-11 text-white font-medium shadow-md"
-              style={{ background: 'linear-gradient(to right, #2d7d6f, #3a9e8d)' }}
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Memproses...
-                </>
-              ) : (
-                'Masuk'
-              )}
-            </Button>
-          </form>
-
-          {/* Whitespace + Credit */}
-          <div className="mt-6 pt-4 border-t border-gray-100 text-center">
-            <p className="text-xs text-gray-400">
-              UI/UX designed by{' '}
-              <span style={{ color: '#2d7d6f' }} className="font-medium">Mujiyanto</span>
-            </p>
-          </div>
-
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
