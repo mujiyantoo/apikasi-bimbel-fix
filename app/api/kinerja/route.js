@@ -9,15 +9,19 @@ const TARIF = {
   SMA: 22000
 }
 
+const TARIF_PR_SMA = 33000
+
 function hitungGaji(jenjang, kategori, menitMengajar) {
   const tarif = TARIF[jenjang]
   if (!tarif) return 0
   if (kategori === 'Reguler') {
-    // Flat per sesi, tidak tergantung menit
+    // Flat per sesi
     return tarif
   } else {
-    // PR: dihitung per menit (tarif / 60 menit × menit mengajar)
-    return Math.round((tarif / 60) * menitMengajar)
+    // PR: (menit / 90) × 0.75 × tarif
+    // Khusus SMA PR pakai tarif 33.000
+    const tarifPR = jenjang === 'SMA' ? TARIF_PR_SMA : tarif
+    return Math.round((menitMengajar / 90) * 0.75 * tarifPR)
   }
 }
 
@@ -76,9 +80,7 @@ export async function POST(request) {
 
     const [jamM, menitM] = jam_mulai.split(':').map(Number)
     const [jamS, menitS] = jam_selesai.split(':').map(Number)
-    const totalMenitMulai = jamM * 60 + menitM
-    const totalMenitSelesai = jamS * 60 + menitS
-    const menitMengajar = totalMenitSelesai - totalMenitMulai
+    const menitMengajar = (jamS * 60 + menitS) - (jamM * 60 + menitM)
 
     if (menitMengajar <= 0) {
       return NextResponse.json(
