@@ -1,140 +1,247 @@
-import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+'use client'
 
-export const dynamic = 'force-dynamic'
+import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { ArrowLeft, Search, Trash2, CheckCircle, Clock, XCircle, RefreshCw } from 'lucide-react'
+import Link from 'next/link'
+import { toast } from 'sonner'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-}
+// ✅ Arahkan ke API binbimbel.com
+const API_BASE = 'https://binbimbel.com'
 
-export async function OPTIONS(request) {
-  return NextResponse.json({}, { headers: corsHeaders })
-}
+export default function PendaftaranPage() {
+  const { data: session } = useSession()
+  const userRole = session?.user?.role || 'Admin'
 
-export async function GET(request) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const search = searchParams.get('search')
-    const status = searchParams.get('status')
+  const [pendaftaran, setPendaftaran] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [prosesId, setProsesId] = useState(null)
 
-    const client = await clientPromise
-    const db = client.db('bimbel_db')
-
-    let query = {}
-    if (search) {
-      query.$or = [
-        { nama_lengkap: { $regex: search, $options: 'i' } },
-        { telepon: { $regex: search, $options: 'i' } }
-      ]
+  const fetchPendaftaran = async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (search) params.set('search', search)
+      if (filterStatus !== 'all') params.set('status', filterStatus)
+      const res = await fetch(`${API_BASE}/api/pendaftaran?${params}`)
+      const data = await res.json()
+      setPendaftaran(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Error:', error)
+    } finally {
+      setLoading(false)
     }
-    if (status && status !== 'all') {
-      query.status = status
-    }
-
-    const pendaftaran = await db.collection('pendaftaran').find(query).sort({ createdAt: -1 }).toArray()
-
-    const formatted = pendaftaran.map(p => ({
-      ...p,
-      id: p._id.toString()
-    }))
-
-    return NextResponse.json(formatted, { headers: corsHeaders })
-  } catch (error) {
-    console.error('Error fetching pendaftaran:', error)
-    return NextResponse.json({ error: 'Gagal memuat data pendaftaran' }, { status: 500, headers: corsHeaders })
   }
-}
 
-export async function POST(request) {
-  try {
-    const data = await request.json()
+  useEffect(() => {
+    fetchPendaftaran()
+  }, [filterStatus])
 
-    const forwarded = request.headers.get('x-forwarded-for')
-    const ip = forwarded ? forwarded.split(',')[0] : request.headers.get('x-real-ip') || 'unknown'
-
-    const client = await clientPromise
-    const db = client.db('bimbel_db')
-
-    const countFromIP = await db.collection('pendaftaran').countDocuments({ ip_address: ip })
-
-    if (countFromIP >= 2) {
-      return NextResponse.json(
-        { error: 'Batas pendaftaran tercapai. Anda hanya dapat mendaftar maksimal 2 kali dari perangkat yang sama.' },
-        { status: 400, headers: corsHeaders }
-      )
-    }
-
-    const newPendaftaran = {
-      ...data,
-      ip_address: ip,
-      status: 'Baru',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-
-    const result = await db.collection('pendaftaran').insertOne(newPendaftaran)
-
-    await db.collection('activities').insertOne({
-      type: 'pendaftaran',
-      description: `Pendaftaran baru: ${data.nama_lengkap} (${data.kelas})`,
-      createdAt: new Date()
-    })
-
-    return NextResponse.json(
-      { message: 'Pendaftaran berhasil disimpan', id: result.insertedId },
-      { status: 201, headers: corsHeaders }
-    )
-  } catch (error) {
-    console.error('Error saving pendaftaran:', error)
-    return NextResponse.json({ error: 'Gagal menyimpan pendaftaran' }, { status: 500, headers: corsHeaders })
+  const handleSearch = (e) => {
+    e.preventDefault()
+    fetchPendaftaran()
   }
-}
 
-export async function PUT(request) {
-  try {
-    const data = await request.json()
-    const { id, status } = data
-
-    const { ObjectId } = await import('mongodb')
-    const client = await clientPromise
-    const db = client.db('bimbel_db')
-
-    await db.collection('pendaftaran').updateOne(
-      { _id: new ObjectId(id) },
-      { $set: { status, updatedAt: new Date() } }
-    )
-
-    return NextResponse.json({ message: 'Status berhasil diupdate' }, { headers: corsHeaders })
-  } catch (error) {
-    console.error('Error updating pendaftaran:', error)
-    return NextResponse.json({ error: 'Gagal update status' }, { status: 500, headers: corsHeaders })
-  }
-}
-
-export async function DELETE(request) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
-
-    if (!id) {
-      return NextResponse.json({ error: 'ID tidak ditemukan' }, { status: 400, headers: corsHeaders })
+  const handleTerima = async (item) => {
+    if (!confirm(`Terima pendaftaran "${item.nama_lengkap}" dan pindahkan ke Data Siswa?`)) return
+    setProsesId(item.id)
+    try {
+      const res = await fetch(`${API_BASE}/api/pendaftaran/terima`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Gagal memproses')
+      toast.success(`${item.nama_lengkap} berhasil diterima dan dipindahkan ke Data Siswa (NIS: ${data.nis})`)
+      fetchPendaftaran()
+    } catch (error) {
+      toast.error(error.message)
+    } finally {
+      setProsesId(null)
     }
-
-    const { ObjectId } = await import('mongodb')
-    const client = await clientPromise
-    const db = client.db('bimbel_db')
-
-    const result = await db.collection('pendaftaran').deleteOne({ _id: new ObjectId(id) })
-
-    if (result.deletedCount === 0) {
-      return NextResponse.json({ error: 'Data tidak ditemukan' }, { status: 404, headers: corsHeaders })
-    }
-
-    return NextResponse.json({ message: 'Data pendaftaran berhasil dihapus' }, { headers: corsHeaders })
-  } catch (error) {
-    console.error('Error deleting pendaftaran:', error)
-    return NextResponse.json({ error: 'Gagal menghapus pendaftaran' }, { status: 500, headers: corsHeaders })
   }
+
+  const handleUpdateStatus = async (id, status) => {
+    try {
+      await fetch(`${API_BASE}/api/pendaftaran`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status })
+      })
+      fetchPendaftaran()
+    } catch (error) {
+      console.error('Error:', error)
+    }
+  }
+
+  const handleDelete = async (id) => {
+    if (userRole !== 'Owner') {
+      alert('Hanya Owner yang dapat menghapus data pendaftaran!')
+      return
+    }
+    if (!confirm('Yakin hapus data pendaftaran ini?')) return
+    try {
+      await fetch(`${API_BASE}/api/pendaftaran?id=${id}`, { method: 'DELETE' })
+      fetchPendaftaran()
+    } catch (error) {
+      console.error('Error:', error)
+    }
+  }
+
+  const getStatusBadge = (status) => {
+    if (status === 'Diterima') return <Badge className="bg-green-100 text-green-700">✅ Diterima</Badge>
+    if (status === 'Ditolak') return <Badge className="bg-red-100 text-red-700">❌ Ditolak</Badge>
+    return <Badge className="bg-yellow-100 text-yellow-700">⏳ Baru</Badge>
+  }
+
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="w-4 h-4 mr-1" /> Kembali
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Data Pendaftaran</h1>
+            <p className="text-sm text-gray-500">Kelola data calon siswa yang mendaftar</p>
+          </div>
+        </div>
+        <Button onClick={fetchPendaftaran} variant="outline" size="sm">
+          <RefreshCw className="w-4 h-4 mr-1" /> Refresh
+        </Button>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-3">
+        <form onSubmit={handleSearch} className="flex gap-2 flex-1">
+          <Input
+            placeholder="Cari nama atau telepon..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1"
+          />
+          <Button type="submit">
+            <Search className="w-4 h-4" />
+          </Button>
+        </form>
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="border rounded-lg px-3 py-2 text-sm"
+        >
+          <option value="all">Semua Status</option>
+          <option value="Baru">Baru</option>
+          <option value="Diterima">Diterima</option>
+          <option value="Ditolak">Ditolak</option>
+        </select>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-yellow-50 rounded-xl p-4 text-center border border-yellow-200">
+          <p className="text-2xl font-bold text-yellow-600">{pendaftaran.filter(p => p.status === 'Baru').length}</p>
+          <p className="text-sm text-yellow-700">Pendaftar Baru</p>
+        </div>
+        <div className="bg-green-50 rounded-xl p-4 text-center border border-green-200">
+          <p className="text-2xl font-bold text-green-600">{pendaftaran.filter(p => p.status === 'Diterima').length}</p>
+          <p className="text-sm text-green-700">Diterima</p>
+        </div>
+        <div className="bg-red-50 rounded-xl p-4 text-center border border-red-200">
+          <p className="text-2xl font-bold text-red-600">{pendaftaran.filter(p => p.status === 'Ditolak').length}</p>
+          <p className="text-sm text-red-700">Ditolak</p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="p-4 border-b">
+          <p className="font-semibold text-gray-700">{pendaftaran.length} total pendaftar</p>
+        </div>
+        {loading ? (
+          <div className="p-8 text-center text-gray-500">Memuat data...</div>
+        ) : pendaftaran.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">Belum ada data pendaftaran</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600">Nama</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600">Kelas</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600">Telepon</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600">Program</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600">Tanggal</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600">Status</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {pendaftaran.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium">{item.nama_lengkap}</td>
+                    <td className="px-4 py-3">{item.kelas}</td>
+                    <td className="px-4 py-3">{item.telepon}</td>
+                    <td className="px-4 py-3">{item.program}</td>
+                    <td className="px-4 py-3">{new Date(item.createdAt).toLocaleDateString('id-ID')}</td>
+                    <td className="px-4 py-3">{getStatusBadge(item.status)}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1">
+                        {item.status === 'Baru' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-green-600 hover:bg-green-50 font-semibold"
+                            onClick={() => handleTerima(item)}
+                            disabled={prosesId === item.id}
+                          >
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            {prosesId === item.id ? 'Proses...' : 'Terima'}
+                          </Button>
+                        )}
+                        {item.status === 'Baru' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 hover:bg-red-50"
+                            onClick={() => handleUpdateStatus(item.id, 'Ditolak')}
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {item.status === 'Ditolak' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-yellow-600 hover:bg-yellow-50"
+                            onClick={() => handleUpdateStatus(item.id, 'Baru')}
+                          >
+                            <Clock className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {userRole === 'Owner' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-gray-600 hover:bg-red-50"
+                            onClick={() => handleDelete(item.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
