@@ -32,15 +32,12 @@ export default function LoginPage() {
       if (result?.error) {
         setError('Email atau password salah')
       } else {
-        // Cek role setelah login berhasil
         const session = await getSession()
         const role = session?.user?.role
 
         if (role === 'Pegawai') {
-          // Pegawai diarahkan ke halaman absensi
           router.push('/absensi')
         } else {
-          // Owner dan Admin diarahkan ke dashboard
           router.push('/dashboard')
         }
         router.refresh()
@@ -107,3 +104,30 @@ export default function LoginPage() {
                 className="h-11"
                 style={{ borderColor: '#2d7d6f' }}
               />
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full h-11 text-white font-medium shadow-md"
+              style={{ background: 'linear-gradient(to right, #2d7d6f, #3a9e8d)' }}
+              disabled={loading}
+            >
+              {loading ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memproses...</>
+              ) : (
+                'Masuk'
+              )}
+            </Button>
+          </form>
+
+          <div className="mt-6 pt-4 border-t border-gray-100 text-center">
+            <p className="text-xs text-gray-400">
+              UI/UX designed by{' '}
+              <span style={{ color: '#2d7d6f' }} className="font-medium">Mujiyanto</span>
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
