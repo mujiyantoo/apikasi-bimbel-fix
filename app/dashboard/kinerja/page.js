@@ -143,7 +143,7 @@ export default function KinerjaPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {/* ✅ TOMBOL KEMBALI KE ABSENSI */}
-          <Link href="/absensi">
+          <Link href="/dashboard/absensi">
             <Button variant="outline" size="sm" className="gap-1">
               <ArrowLeft className="w-4 h-4" /> Absensi
             </Button>
