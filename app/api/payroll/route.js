@@ -10,30 +10,33 @@ export async function GET(request) {
     const tahun = parseInt(searchParams.get('tahun'))
 
     const client = await clientPromise
-    const db = client.db('bimbel_db')
+    const db = client.db(process.env.DB_NAME || 'bimbel_db')
 
-    // Ambil semua kinerja di bulan/tahun tersebut
     const kinerjaData = await db.collection('kinerja')
       .find({ bulan, tahun })
       .sort({ tanggal: 1 })
       .toArray()
 
-    // Group by pengajar_id
+    const { ObjectId } = await import('mongodb')
     const payrollMap = {}
 
     for (const item of kinerjaData) {
-      const { ObjectId } = await import('mongodb')
-      
-      if (!payrollMap[item.pengajar_id]) {
-        // Fetch data pengajar
-        const pengajar = await db.collection('pegawai').findOne({ 
-          _id: new ObjectId(item.pengajar_id) 
-        })
+      const pid = item.pengajar_id
 
-        payrollMap[item.pengajar_id] = {
-          pengajar_id: item.pengajar_id,
-          pengajar_nama: pengajar?.nama || 'Tidak diketahui',
-          pengajar_email: pengajar?.email || '',
+      if (!payrollMap[pid]) {
+        let pengajar_nama = 'Tidak diketahui'
+        try {
+          if (pid && ObjectId.isValid(pid)) {
+            const pengajar = await db.collection('pegawai').findOne({
+              _id: new ObjectId(pid)
+            })
+            pengajar_nama = pengajar?.nama || 'Tidak diketahui'
+          }
+        } catch (e) {}
+
+        payrollMap[pid] = {
+          pengajar_id: pid,
+          pengajar_nama,
           total_gaji: 0,
           total_jam: 0,
           jumlah_sesi: 0,
@@ -41,10 +44,10 @@ export async function GET(request) {
         }
       }
 
-      payrollMap[item.pengajar_id].total_gaji += item.gaji
-      payrollMap[item.pengajar_id].total_jam += item.menit_mengajar
-      payrollMap[item.pengajar_id].jumlah_sesi += 1
-      payrollMap[item.pengajar_id].rincian.push({
+      payrollMap[pid].total_gaji += item.gaji || 0
+      payrollMap[pid].total_jam += item.menit_mengajar || 0
+      payrollMap[pid].jumlah_sesi += 1
+      payrollMap[pid].rincian.push({
         id: item._id.toString(),
         tanggal: item.tanggal,
         jam_mulai: item.jam_mulai,
@@ -58,6 +61,7 @@ export async function GET(request) {
     }
 
     const payrollArray = Object.values(payrollMap)
+      .sort((a, b) => b.total_gaji - a.total_gaji)
 
     return NextResponse.json(payrollArray)
   } catch (error) {
