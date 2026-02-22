@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,8 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Trash2, RefreshCw, DollarSign } from 'lucide-react'
 
 export default function KinerjaPage() {
+  const { data: session } = useSession()
+  const userRole = session?.user?.role || 'Admin'
+  const userEmail = session?.user?.email
+
   const [kinerja, setKinerja] = useState([])
   const [pegawai, setPegawai] = useState([])
+  const [currentPegawaiId, setCurrentPegawaiId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [filterBulan, setFilterBulan] = useState(new Date().getMonth() + 1)
@@ -37,13 +43,40 @@ export default function KinerjaPage() {
     { value: 11, label: 'November' }, { value: 12, label: 'Desember' }
   ]
 
+  const fetchPegawai = async () => {
+    try {
+      const res = await fetch('/api/pegawai')
+      const data = await res.json()
+      const pengajarList = Array.isArray(data) ? data.filter(p => p.jabatan?.toLowerCase().includes('pengajar') || p.jabatan?.toLowerCase().includes('guru')) : []
+      setPegawai(pengajarList)
+
+      // Cari pegawai berdasarkan email user yang login
+      if (userRole !== 'Owner') {
+        const currentUser = pengajarList.find(p => p.email === userEmail)
+        if (currentUser) {
+          setCurrentPegawaiId(currentUser.id)
+          setFilterPengajar(currentUser.id)
+          setFormData(prev => ({ ...prev, pengajar_id: currentUser.id }))
+        }
+      }
+    } catch (error) {
+      console.error('Error:', error)
+    }
+  }
+
   const fetchKinerja = async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
       params.set('bulan', filterBulan)
       params.set('tahun', filterTahun)
-      if (filterPengajar !== 'all') params.set('pengajar_id', filterPengajar)
+      
+      // Kalau bukan Owner, filter otomatis by currentPegawaiId
+      if (userRole !== 'Owner' && currentPegawaiId) {
+        params.set('pengajar_id', currentPegawaiId)
+      } else if (filterPengajar !== 'all') {
+        params.set('pengajar_id', filterPengajar)
+      }
       
       const res = await fetch(`/api/kinerja?${params}`)
       const data = await res.json()
@@ -55,20 +88,14 @@ export default function KinerjaPage() {
     }
   }
 
-  const fetchPegawai = async () => {
-    try {
-      const res = await fetch('/api/pegawai')
-      const data = await res.json()
-      setPegawai(Array.isArray(data) ? data.filter(p => p.jabatan?.toLowerCase().includes('pengajar') || p.jabatan?.toLowerCase().includes('guru')) : [])
-    } catch (error) {
-      console.error('Error:', error)
-    }
-  }
+  useEffect(() => {
+    fetchPegawai()
+  }, [])
 
   useEffect(() => {
+    if (userRole !== 'Owner' && !currentPegawaiId) return // Tunggu currentPegawaiId terisi dulu
     fetchKinerja()
-    fetchPegawai()
-  }, [filterBulan, filterTahun, filterPengajar])
+  }, [filterBulan, filterTahun, filterPengajar, currentPegawaiId])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -107,7 +134,7 @@ export default function KinerjaPage() {
 
   const resetForm = () => {
     setFormData({
-      pengajar_id: '',
+      pengajar_id: userRole !== 'Owner' && currentPegawaiId ? currentPegawaiId : '',
       tanggal: new Date().toISOString().split('T')[0],
       jam_mulai: '',
       jam_selesai: '',
@@ -149,17 +176,28 @@ export default function KinerjaPage() {
                 <DialogTitle>Tambah Kinerja Baru</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Label>Pengajar *</Label>
-                  <Select value={formData.pengajar_id} onValueChange={(v) => setFormData({...formData, pengajar_id: v})} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih Pengajar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {pegawai.map(p => <SelectItem key={p.id} value={p.id}>{p.nama}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {userRole === 'Owner' ? (
+                  <div>
+                    <Label>Pengajar *</Label>
+                    <Select value={formData.pengajar_id} onValueChange={(v) => setFormData({...formData, pengajar_id: v})} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih Pengajar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {pegawai.map(p => <SelectItem key={p.id} value={p.id}>{p.nama}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div>
+                    <Label>Pengajar</Label>
+                    <Input 
+                      value={pegawai.find(p => p.id === currentPegawaiId)?.nama || 'Loading...'} 
+                      disabled 
+                      className="bg-gray-100"
+                    />
+                  </div>
+                )}
                 <div>
                   <Label>Tanggal *</Label>
                   <Input type="date" value={formData.tanggal} onChange={(e) => setFormData({...formData, tanggal: e.target.value})} required />
@@ -233,18 +271,20 @@ export default function KinerjaPage() {
               <Label>Tahun</Label>
               <Input type="number" value={filterTahun} onChange={(e) => setFilterTahun(parseInt(e.target.value))} />
             </div>
-            <div className="flex-1">
-              <Label>Pengajar</Label>
-              <Select value={filterPengajar} onValueChange={setFilterPengajar}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Pengajar</SelectItem>
-                  {pegawai.map(p => <SelectItem key={p.id} value={p.id}>{p.nama}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            {userRole === 'Owner' && (
+              <div className="flex-1">
+                <Label>Pengajar</Label>
+                <Select value={filterPengajar} onValueChange={setFilterPengajar}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Pengajar</SelectItem>
+                    {pegawai.map(p => <SelectItem key={p.id} value={p.id}>{p.nama}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -268,7 +308,7 @@ export default function KinerjaPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left">Tanggal</th>
-                    <th className="px-4 py-3 text-left">Pengajar</th>
+                    {userRole === 'Owner' && <th className="px-4 py-3 text-left">Pengajar</th>}
                     <th className="px-4 py-3 text-left">Jam</th>
                     <th className="px-4 py-3 text-left">Durasi</th>
                     <th className="px-4 py-3 text-left">Jenjang</th>
@@ -281,7 +321,7 @@ export default function KinerjaPage() {
                   {kinerja.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">{new Date(item.tanggal).toLocaleDateString('id-ID')}</td>
-                      <td className="px-4 py-3">{item.pengajar_nama}</td>
+                      {userRole === 'Owner' && <td className="px-4 py-3">{item.pengajar_nama}</td>}
                       <td className="px-4 py-3">{item.jam_mulai} - {item.jam_selesai}</td>
                       <td className="px-4 py-3">{item.menit_mengajar} menit</td>
                       <td className="px-4 py-3">{item.jenjang}</td>
