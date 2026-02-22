@@ -6,12 +6,11 @@ export default withAuth(
     const token = req.nextauth.token
     const pathname = req.nextUrl.pathname
 
-    // Jika belum login, redirect ke login
     if (!token) {
       return NextResponse.redirect(new URL('/login', req.url))
     }
 
-    // Jika role Pegawai coba akses dashboard selain absensi → redirect ke absensi
+    // Pegawai tidak boleh akses dashboard sama sekali
     if (token.role === 'Pegawai' && pathname.startsWith('/dashboard')) {
       return NextResponse.redirect(new URL('/absensi', req.url))
     }
