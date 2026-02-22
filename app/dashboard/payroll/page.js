@@ -1,359 +1,288 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { toast } from 'sonner'
-import { Search, Banknote, Loader2, ArrowLeft, CheckCircle, Clock, CalendarX } from 'lucide-react'
-import Link from 'next/link'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ChevronDown, ChevronUp, RefreshCw, FileDown, DollarSign, Clock, Calendar } from 'lucide-react'
+import * as XLSX from 'xlsx'
+import jsPDF from 'jspdf'
+import 'jspdf-autotable'
 
 export default function PayrollPage() {
-    const [pegawai, setPegawai] = useState([])
-    const [loading, setLoading] = useState(true)
-    const [search, setSearch] = useState('')
-    const [processingId, setProcessingId] = useState(null)
+  const { data: session } = useSession()
+  const userRole = session?.user?.role || 'Admin'
 
-    // Constants
-    const RATE_JAM_MENGAJAR = 35000 // Rp 35.000 per jam
-    const POTONGAN_ABSEN = 50000 // Rp 50.000 per kehadiran
+  const [payroll, setPayroll] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [filterBulan, setFilterBulan] = useState(new Date().getMonth() + 1)
+  const [filterTahun, setFilterTahun] = useState(new Date().getFullYear())
+  const [expandedRows, setExpandedRows] = useState({})
 
-    // Mock payroll data structure extension
-    const [payrollData, setPayrollData] = useState({})
+  const bulanOptions = [
+    { value: 1, label: 'Januari' }, { value: 2, label: 'Februari' },
+    { value: 3, label: 'Maret' }, { value: 4, label: 'April' },
+    { value: 5, label: 'Mei' }, { value: 6, label: 'Juni' },
+    { value: 7, label: 'Juli' }, { value: 8, label: 'Agustus' },
+    { value: 9, label: 'September' }, { value: 10, label: 'Oktober' },
+    { value: 11, label: 'November' }, { value: 12, label: 'Desember' }
+  ]
 
-    // Temporary state for the dialog form
-    const [editForm, setEditForm] = useState({
-        jamMengajar: 0,
-        jumlahAbsen: 0,
-        gajiPokok: 0,
-        tunjangan: 0
+  const fetchPayroll = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/payroll?bulan=${filterBulan}&tahun=${filterTahun}`)
+      const data = await res.json()
+      setPayroll(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Error:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchPayroll()
+  }, [filterBulan, filterTahun])
+
+  const toggleExpand = (pengajarId) => {
+    setExpandedRows(prev => ({
+      ...prev,
+      [pengajarId]: !prev[pengajarId]
+    }))
+  }
+
+  const formatRupiah = (angka) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0
+    }).format(angka)
+  }
+
+  const formatJam = (menit) => {
+    const jam = Math.floor(menit / 60)
+    const sisa = menit % 60
+    return `${jam}j ${sisa}m`
+  }
+
+  const totalKeseluruhan = payroll.reduce((sum, item) => sum + item.total_gaji, 0)
+  const totalJamKeseluruhan = payroll.reduce((sum, item) => sum + item.total_jam, 0)
+  const totalSesiKeseluruhan = payroll.reduce((sum, item) => sum + item.jumlah_sesi, 0)
+
+  const exportToExcel = () => {
+    const dataToExport = []
+    
+    payroll.forEach(item => {
+      dataToExport.push({
+        'Pengajar': item.pengajar_nama,
+        'Total Gaji': item.total_gaji,
+        'Total Jam': formatJam(item.total_jam),
+        'Jumlah Sesi': item.jumlah_sesi
+      })
+      
+      item.rincian.forEach(r => {
+        dataToExport.push({
+          'Pengajar': `  → ${new Date(r.tanggal).toLocaleDateString('id-ID')}`,
+          'Total Gaji': r.gaji,
+          'Total Jam': `${r.jam_mulai}-${r.jam_selesai}`,
+          'Jumlah Sesi': `${r.jenjang} ${r.kategori}`
+        })
+      })
     })
 
-    // Initialize dialog form when opening
-    const handleOpenDialog = (p) => {
-        const data = payrollData[p.id] || {}
-        setEditForm({
-            jamMengajar: data.jamMengajar || 0,
-            jumlahAbsen: data.jumlahAbsen || 0,
-            gajiPokok: data.gajiPokok || 0,
-            tunjangan: data.tunjangan || 0
-        })
-    }
+    const ws = XLSX.utils.json_to_sheet(dataToExport)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Payroll')
+    
+    const fileName = `Payroll_${bulanOptions.find(b => b.value === filterBulan)?.label}_${filterTahun}.xlsx`
+    XLSX.writeFile(wb, fileName)
+  }
 
-    const fetchPegawai = async () => {
-        setLoading(true)
-        try {
-            const res = await fetch('/api/pegawai')
-            if (!res.ok) throw new Error('Gagal memuat data pegawai')
-            const data = await res.json()
+  const exportToPDF = () => {
+    const doc = new jsPDF()
+    
+    doc.setFontSize(16)
+    doc.text('LAPORAN PAYROLL PENGAJAR', 14, 15)
+    doc.setFontSize(10)
+    doc.text(`Periode: ${bulanOptions.find(b => b.value === filterBulan)?.label} ${filterTahun}`, 14, 22)
 
-            const eligibleRoles = ['guru', 'tutor', 'admin', 'keuangan', 'pimpinan', 'staff']
-            const eligiblePegawai = Array.isArray(data)
-                ? data.filter(p => p.jabatan && eligibleRoles.includes(p.jabatan.toLowerCase()))
-                : []
+    const tableData = payroll.map(item => [
+      item.pengajar_nama,
+      formatRupiah(item.total_gaji),
+      formatJam(item.total_jam),
+      item.jumlah_sesi + ' sesi'
+    ])
 
-            setPegawai(eligiblePegawai)
+    doc.autoTable({
+      startY: 28,
+      head: [['Pengajar', 'Total Gaji', 'Total Jam', 'Jumlah Sesi']],
+      body: tableData,
+      foot: [['TOTAL KESELURUHAN', formatRupiah(totalKeseluruhan), formatJam(totalJamKeseluruhan), totalSesiKeseluruhan + ' sesi']],
+      theme: 'grid',
+      headStyles: { fillColor: [59, 130, 246] },
+      footStyles: { fillColor: [34, 197, 94], fontStyle: 'bold' },
+      styles: { fontSize: 9 }
+    })
 
-            // Initialize mock payroll data if empty
-            const initialPayroll = {}
-            eligiblePegawai.forEach(p => {
-                const jabatan = p.jabatan ? p.jabatan.toLowerCase() : ''
-                initialPayroll[p.id] = {
-                    gajiPokok: jabatan === 'pimpinan' ? 5000000 : jabatan.includes('guru') ? 3000000 : 2500000,
-                    tunjangan: jabatan.includes('guru') ? 500000 : 200000,
-                    jamMengajar: 0,
-                    jumlahAbsen: 0,
-                    status: 'Belum Dibayar',
-                    bulan: new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' })
-                }
-            })
+    const fileName = `Payroll_${bulanOptions.find(b => b.value === filterBulan)?.label}_${filterTahun}.pdf`
+    doc.save(fileName)
+  }
 
-            // Merge with existing state (to preserve edits if re-fetching in a real app, though here implementation is simple)
-            setPayrollData(prev => {
-                // Only add if not exists to preserve state during this session
-                const merged = { ...prev }
-                Object.keys(initialPayroll).forEach(key => {
-                    if (!merged[key]) merged[key] = initialPayroll[key]
-                })
-                return merged
-            })
-
-        } catch (error) {
-            console.error('Error:', error)
-            toast.error('Gagal memuat data pegawai')
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    useEffect(() => {
-        fetchPegawai()
-    }, [])
-
-    const handleProcessPayment = async (id) => {
-        setProcessingId(id)
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1500))
-
-        // Save the edited values and mark as paid
-        setPayrollData(prev => ({
-            ...prev,
-            [id]: {
-                ...prev[id],
-                ...editForm, // Save the form values
-                status: 'Sudah Dibayar',
-                tanggalBayar: new Date().toLocaleDateString('id-ID')
-            }
-        }))
-
-        toast.success('Gaji berhasil diproses')
-        setProcessingId(null)
-    }
-
-    // Calculate total dynamically
-    const calculateTotal = (data) => {
-        const pokok = data.gajiPokok || 0
-        const tunjangan = data.tunjangan || 0
-        const lembur = (data.jamMengajar || 0) * RATE_JAM_MENGAJAR
-        const potongan = (data.jumlahAbsen || 0) * POTONGAN_ABSEN
-        return pokok + tunjangan + lembur - potongan
-    }
-
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(amount)
-    }
-
-    const filteredPegawai = pegawai.filter(p =>
-        p.nama.toLowerCase().includes(search.toLowerCase()) ||
-        p.nip.toLowerCase().includes(search.toLowerCase())
-    )
-
-    return (
-        <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <div className="flex items-center gap-2 mb-2">
-                        <Link href="/dashboard">
-                            <Button variant="ghost" size="sm" className="pl-0 hover:pl-2 transition-all">
-                                <ArrowLeft className="w-4 h-4 mr-2" />
-                                Kembali ke Dashboard
-                            </Button>
-                        </Link>
-                    </div>
-                    <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Penggajian (Payroll)</h1>
-                    <p className="text-gray-500 mt-1">Kelola gaji, jam mengajar, dan kehadiran</p>
-                </div>
-            </div>
-
-            <Card className="border-0 shadow-md">
-                <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                            <Input
-                                placeholder="Cari nama atau NIP..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="pl-10"
-                            />
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-md">
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle className="text-lg">Daftar Gaji Pegawai</CardTitle>
-                            <CardDescription>Periode: {new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' })}</CardDescription>
-                        </div>
-                        <div className="p-2 bg-green-50 rounded-lg">
-                            <Banknote className="w-6 h-6 text-green-600" />
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    {loading ? (
-                        <div className="flex justify-center py-12">
-                            <Loader2 className="w-8 h-8 animate-spin text-green-600" />
-                        </div>
-                    ) : filteredPegawai.length === 0 ? (
-                        <div className="text-center py-12">
-                            <p className="text-gray-500">Tidak ada data pegawai yang sesuai</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Nama / NIP</TableHead>
-                                        <TableHead>Jabatan</TableHead>
-                                        <TableHead>Gaji Pokok</TableHead>
-                                        <TableHead>Jam Mengajar</TableHead>
-                                        <TableHead>Absen</TableHead>
-                                        <TableHead>Total Penerimaan</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead className="text-right">Aksi</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredPegawai.map((p) => {
-                                        const payroll = payrollData[p.id] || {
-                                            gajiPokok: 0, tunjangan: 0, jamMengajar: 0, jumlahAbsen: 0, status: '-'
-                                        }
-                                        const total = calculateTotal(payroll)
-
-                                        return (
-                                            <TableRow key={p.id}>
-                                                <TableCell>
-                                                    <div className="font-medium">{p.nama}</div>
-                                                    <div className="text-xs text-gray-500">{p.nip}</div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge variant="outline">{p.jabatan}</Badge>
-                                                </TableCell>
-                                                <TableCell className="font-mono text-sm">
-                                                    {formatCurrency(payroll.gajiPokok)}
-                                                </TableCell>
-                                                <TableCell className="text-center">
-                                                    {payroll.jamMengajar > 0 ? (
-                                                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-50">
-                                                            {payroll.jamMengajar} Jam
-                                                        </Badge>
-                                                    ) : '-'}
-                                                </TableCell>
-                                                <TableCell className="text-center">
-                                                    {payroll.jumlahAbsen > 0 ? (
-                                                        <Badge variant="destructive" className="bg-red-50 text-red-700 hover:bg-red-50 border-red-200">
-                                                            {payroll.jumlahAbsen} Hari
-                                                        </Badge>
-                                                    ) : '-'}
-                                                </TableCell>
-                                                <TableCell className="font-mono font-bold text-green-700">
-                                                    {formatCurrency(total)}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge variant={payroll.status === 'Sudah Dibayar' ? 'default' : 'destructive'}
-                                                        className={payroll.status === 'Sudah Dibayar' ? 'bg-green-100 text-green-800 hover:bg-green-100' : ''}>
-                                                        {payroll.status}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    {payroll.status === 'Sudah Dibayar' ? (
-                                                        <Button variant="ghost" size="sm" className="text-green-600 cursor-default hover:bg-transparent">
-                                                            <CheckCircle className="w-4 h-4 mr-2" />
-                                                            Selesai
-                                                        </Button>
-                                                    ) : (
-                                                        <Dialog onOpenChange={(open) => {
-                                                            if (open) handleOpenDialog(p)
-                                                        }}>
-                                                            <DialogTrigger asChild>
-                                                                <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                                                                    Proses
-                                                                </Button>
-                                                            </DialogTrigger>
-                                                            <DialogContent className="max-w-lg">
-                                                                <DialogHeader>
-                                                                    <DialogTitle>Konfirmasi Pembayaran Gaji</DialogTitle>
-                                                                    <DialogDescription>
-                                                                        Sesuaikan kehadiran dan jam mengajar untuk <strong>{p.nama}</strong>.
-                                                                    </DialogDescription>
-                                                                </DialogHeader>
-                                                                <div className="space-y-4 py-4">
-
-                                                                    {/* Input Fields */}
-                                                                    <div className="grid grid-cols-2 gap-4">
-                                                                        {p.jabatan && (p.jabatan.toLowerCase().includes('guru') || p.jabatan.toLowerCase().includes('tutor')) && (
-                                                                            <div className="space-y-2">
-                                                                                <Label htmlFor="jamMengajar">Jam Mengajar</Label>
-                                                                                <div className="relative">
-                                                                                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                                                                                    <Input
-                                                                                        id="jamMengajar"
-                                                                                        type="number"
-                                                                                        className="pl-9"
-                                                                                        value={editForm.jamMengajar}
-                                                                                        onChange={(e) => setEditForm({ ...editForm, jamMengajar: Number(e.target.value) })}
-                                                                                    />
-                                                                                </div>
-                                                                            </div>
-                                                                        )}
-                                                                        <div className="space-y-2">
-                                                                            <Label htmlFor="jumlahAbsen">Absen (Hari)</Label>
-                                                                            <div className="relative">
-                                                                                <CalendarX className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                                                                                <Input
-                                                                                    id="jumlahAbsen"
-                                                                                    type="number"
-                                                                                    className="pl-9"
-                                                                                    value={editForm.jumlahAbsen}
-                                                                                    onChange={(e) => setEditForm({ ...editForm, jumlahAbsen: Number(e.target.value) })}
-                                                                                />
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div className="bg-gray-50 p-4 rounded-md space-y-2 text-sm">
-                                                                        <div className="flex justify-between">
-                                                                            <span>Gaji Pokok:</span>
-                                                                            <span>{formatCurrency(editForm.gajiPokok)}</span>
-                                                                        </div>
-                                                                        <div className="flex justify-between">
-                                                                            <span>Tunjangan:</span>
-                                                                            <span>{formatCurrency(editForm.tunjangan)}</span>
-                                                                        </div>
-
-                                                                        {p.jabatan && (p.jabatan.toLowerCase().includes('guru') || p.jabatan.toLowerCase().includes('tutor')) && (
-                                                                            <div className="flex justify-between text-blue-700">
-                                                                                <span>Honorer ({editForm.jamMengajar} jam x {formatCurrency(RATE_JAM_MENGAJAR)}):</span>
-                                                                                <span>+ {formatCurrency(editForm.jamMengajar * RATE_JAM_MENGAJAR)}</span>
-                                                                            </div>
-                                                                        )}
-
-                                                                        {editForm.jumlahAbsen > 0 && (
-                                                                            <div className="flex justify-between text-red-700">
-                                                                                <span>Potongan Absen ({editForm.jumlahAbsen} hari):</span>
-                                                                                <span>- {formatCurrency(editForm.jumlahAbsen * POTONGAN_ABSEN)}</span>
-                                                                            </div>
-                                                                        )}
-
-                                                                        <div className="border-t pt-2 mt-2 font-bold flex justify-between text-base">
-                                                                            <span>Total Transfer:</span>
-                                                                            <span>{formatCurrency(calculateTotal(editForm))}</span>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <Button
-                                                                        className="w-full bg-green-600 hover:bg-green-700"
-                                                                        onClick={() => handleProcessPayment(p.id)}
-                                                                        disabled={processingId === p.id}
-                                                                    >
-                                                                        {processingId === p.id ? (
-                                                                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Memproses...</>
-                                                                        ) : (
-                                                                            <>Konfirmasi Transfer</>
-                                                                        )}
-                                                                    </Button>
-                                                                </div>
-                                                            </DialogContent>
-                                                        </Dialog>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                        )
-                                    })}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Payroll Pengajar</h1>
+          <p className="text-sm text-gray-500">Ringkasan gaji berdasarkan data kinerja</p>
         </div>
-    )
+        <div className="flex gap-2">
+          <Button onClick={fetchPayroll} variant="outline" size="sm">
+            <RefreshCw className="w-4 h-4 mr-1" /> Refresh
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-0 shadow-md bg-gradient-to-br from-green-500 to-green-600 text-white">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-green-100 text-sm">Total Gaji Bulan Ini</p>
+                <p className="text-2xl font-bold mt-1">{formatRupiah(totalKeseluruhan)}</p>
+              </div>
+              <div className="p-3 bg-white/20 rounded-xl">
+                <DollarSign className="w-8 h-8" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-md bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-100 text-sm">Total Jam Mengajar</p>
+                <p className="text-2xl font-bold mt-1">{formatJam(totalJamKeseluruhan)}</p>
+              </div>
+              <div className="p-3 bg-white/20 rounded-xl">
+                <Clock className="w-8 h-8" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-md bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-purple-100 text-sm">Total Sesi Mengajar</p>
+                <p className="text-2xl font-bold mt-1">{totalSesiKeseluruhan} sesi</p>
+              </div>
+              <div className="p-3 bg-white/20 rounded-xl">
+                <Calendar className="w-8 h-8" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col md:flex-row gap-4 items-end">
+            <div className="flex-1">
+              <Label>Bulan</Label>
+              <Select value={filterBulan.toString()} onValueChange={(v) => setFilterBulan(parseInt(v))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {bulanOptions.map(b => <SelectItem key={b.value} value={b.value.toString()}>{b.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1">
+              <Label>Tahun</Label>
+              <Input type="number" value={filterTahun} onChange={(e) => setFilterTahun(parseInt(e.target.value))} />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={exportToExcel} variant="outline">
+                <FileDown className="w-4 h-4 mr-1" /> Excel
+              </Button>
+              <Button onClick={exportToPDF} variant="outline">
+                <FileDown className="w-4 h-4 mr-1" /> PDF
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-8 text-gray-500">Memuat data...</div>
+          ) : payroll.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">Belum ada data payroll untuk periode ini</div>
+          ) : (
+            <div className="space-y-2">
+              {payroll.map((item) => (
+                <div key={item.pengajar_id} className="border rounded-lg overflow-hidden">
+                  <div 
+                    className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 cursor-pointer"
+                    onClick={() => toggleExpand(item.pengajar_id)}
+                  >
+                    <div className="flex items-center gap-4 flex-1">
+                      <Button variant="ghost" size="sm" className="p-0 h-auto">
+                        {expandedRows[item.pengajar_id] ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                      </Button>
+                      <div>
+                        <p className="font-semibold text-gray-900">{item.pengajar_nama}</p>
+                        <p className="text-sm text-gray-500">{item.jumlah_sesi} sesi • {formatJam(item.total_jam)}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-green-600">{formatRupiah(item.total_gaji)}</p>
+                    </div>
+                  </div>
+
+                  {expandedRows[item.pengajar_id] && (
+                    <div className="p-4 bg-white border-t">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs">Tanggal</th>
+                            <th className="px-3 py-2 text-left text-xs">Jam</th>
+                            <th className="px-3 py-2 text-left text-xs">Durasi</th>
+                            <th className="px-3 py-2 text-left text-xs">Jenjang</th>
+                            <th className="px-3 py-2 text-left text-xs">Kategori</th>
+                            <th className="px-3 py-2 text-right text-xs">Gaji</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {item.rincian.map((r) => (
+                            <tr key={r.id} className="hover:bg-gray-50">
+                              <td className="px-3 py-2">{new Date(r.tanggal).toLocaleDateString('id-ID')}</td>
+                              <td className="px-3 py-2">{r.jam_mulai} - {r.jam_selesai}</td>
+                              <td className="px-3 py-2">{r.menit_mengajar} menit</td>
+                              <td className="px-3 py-2">{r.jenjang}</td>
+                              <td className="px-3 py-2">
+                                <span className={`px-2 py-1 rounded text-xs ${r.kategori === 'Reguler' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
+                                  {r.kategori}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-right font-semibold text-green-600">{formatRupiah(r.gaji)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
 }
