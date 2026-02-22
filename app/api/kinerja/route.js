@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 
 const TARIF = {
   SD: { reguler: 24000, durasi: 90 },
-  SMP: { reguler: 26000, durasi: 90 },
+  SMP: { reguler: 25000, durasi: 90 },
   SMA: { reguler: 22000, durasi: 60 }
 }
 
