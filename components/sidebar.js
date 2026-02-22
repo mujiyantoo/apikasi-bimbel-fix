@@ -25,7 +25,8 @@ import {
   Banknote,
   ClipboardList,
   Calendar,
-  TrendingUp
+  TrendingUp,
+  MapPin
 } from 'lucide-react'
 
 const menuItems = [
@@ -34,6 +35,7 @@ const menuItems = [
   { name: 'Kesiswaan', href: '/dashboard/siswa', icon: Users, roles: ['Owner'] },
   { name: 'Kepegawaian', href: '/dashboard/pegawai', icon: UserCog, roles: ['Owner', 'Admin'] },
   { name: 'Jadwal', href: '/dashboard/jadwal', icon: Calendar, roles: ['Owner', 'Admin'] },
+  { name: 'Absensi', href: '/dashboard/absensi', icon: MapPin, roles: ['Owner', 'Admin'] },
   { name: 'Kinerja', href: '/dashboard/kinerja', icon: TrendingUp, roles: ['Owner', 'Admin'] },
   { name: 'Akademik', href: '/dashboard/akademik', icon: BookOpen, roles: ['Owner', 'Admin'] },
   { name: 'Keuangan', href: '/dashboard/keuangan', icon: Wallet, roles: ['Owner', 'Admin'] },
