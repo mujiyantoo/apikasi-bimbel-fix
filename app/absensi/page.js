@@ -61,13 +61,31 @@ export default function AbsensiPage() {
     try {
       const bulan = new Date().getMonth() + 1
       const tahun = new Date().getFullYear()
-      const res = await fetch(`/api/kinerja?pengajar_id=${session.user.id}&bulan=${bulan}&tahun=${tahun}`)
+
+      // Cari pegawai berdasarkan nama yang sama di collection pegawai
+      const resPegawai = await fetch('/api/pegawai')
+      const dataPegawai = await resPegawai.json()
+      const list = Array.isArray(dataPegawai) ? dataPegawai : []
+
+      const pegawaiSaya = list.find(p =>
+        p.nama?.toLowerCase() === session.user.name?.toLowerCase()
+      )
+
+      if (!pegawaiSaya) {
+        setKinerjaRingkasan({ jumlah: 0, total: 0 })
+        return
+      }
+
+      const res = await fetch(`/api/kinerja?pengajar_id=${pegawaiSaya.id}&bulan=${bulan}&tahun=${tahun}`)
       const data = await res.json()
       if (Array.isArray(data)) {
         const total = data.reduce((sum, k) => sum + (k.gaji || 0), 0)
         setKinerjaRingkasan({ jumlah: data.length, total })
       }
-    } catch (err) { console.error(err) }
+    } catch (err) {
+      console.error(err)
+      setKinerjaRingkasan({ jumlah: 0, total: 0 })
+    }
   }
 
   const handleLogin = async (e) => {
@@ -127,7 +145,6 @@ export default function AbsensiPage() {
     )
   }
 
-  // Halaman Login
   if (!session) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-700 px-4">
@@ -181,7 +198,6 @@ export default function AbsensiPage() {
     )
   }
 
-  // Halaman Absensi
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 px-4 py-8">
       <div className="max-w-sm mx-auto space-y-4">
@@ -272,9 +288,9 @@ export default function AbsensiPage() {
 
         <p className="text-center text-xs text-gray-400">Absensi hanya bisa dilakukan dalam radius 20 meter dari kantor</p>
 
-        {/* ✅ LINK KE HALAMAN KINERJA */}
+        {/* Link Kinerja */}
         <Link
-          href="/kinerja"
+          href="/kinerja-saya"
           className="bg-white rounded-2xl shadow-md p-4 flex items-center justify-between hover:bg-blue-50 transition-colors group"
         >
           <div className="flex items-center gap-3">
