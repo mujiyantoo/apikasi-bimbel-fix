@@ -7,15 +7,17 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Search, Trash2, CheckCircle, Clock, XCircle, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 
 export default function PendaftaranPage() {
   const { data: session } = useSession()
   const userRole = session?.user?.role || 'Admin'
-  
+
   const [pendaftaran, setPendaftaran] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
+  const [prosesId, setProsesId] = useState(null)
 
   const fetchPendaftaran = async () => {
     setLoading(true)
@@ -42,6 +44,26 @@ export default function PendaftaranPage() {
     fetchPendaftaran()
   }
 
+  const handleTerima = async (item) => {
+    if (!confirm(`Terima pendaftaran "${item.nama_lengkap}" dan pindahkan ke Data Siswa?`)) return
+    setProsesId(item.id)
+    try {
+      const res = await fetch('/api/pendaftaran/terima', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Gagal memproses')
+      toast.success(`${item.nama_lengkap} berhasil diterima dan dipindahkan ke Data Siswa (NIS: ${data.nis})`)
+      fetchPendaftaran()
+    } catch (error) {
+      toast.error(error.message)
+    } finally {
+      setProsesId(null)
+    }
+  }
+
   const handleUpdateStatus = async (id, status) => {
     try {
       await fetch('/api/pendaftaran', {
@@ -60,9 +82,7 @@ export default function PendaftaranPage() {
       alert('Hanya Owner yang dapat menghapus data pendaftaran!')
       return
     }
-    
     if (!confirm('Yakin hapus data pendaftaran ini?')) return
-    
     try {
       await fetch(`/api/pendaftaran?id=${id}`, { method: 'DELETE' })
       fetchPendaftaran()
@@ -168,33 +188,42 @@ export default function PendaftaranPage() {
                     <td className="px-4 py-3">{getStatusBadge(item.status)}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-green-600 hover:bg-green-50"
-                          onClick={() => handleUpdateStatus(item.id, 'Diterima')}
-                          title="Terima"
-                        >
-                          <CheckCircle className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-yellow-600 hover:bg-yellow-50"
-                          onClick={() => handleUpdateStatus(item.id, 'Baru')}
-                          title="Set Baru"
-                        >
-                          <Clock className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-red-600 hover:bg-red-50"
-                          onClick={() => handleUpdateStatus(item.id, 'Ditolak')}
-                          title="Tolak"
-                        >
-                          <XCircle className="w-4 h-4" />
-                        </Button>
+                        {/* Tombol Diterima - hanya tampil jika status Baru */}
+                        {item.status === 'Baru' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-green-600 hover:bg-green-50 font-semibold"
+                            onClick={() => handleTerima(item)}
+                            disabled={prosesId === item.id}
+                            title="Terima & Pindah ke Data Siswa"
+                          >
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            {prosesId === item.id ? 'Proses...' : 'Terima'}
+                          </Button>
+                        )}
+                        {item.status === 'Baru' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 hover:bg-red-50"
+                            onClick={() => handleUpdateStatus(item.id, 'Ditolak')}
+                            title="Tolak"
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {item.status === 'Ditolak' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-yellow-600 hover:bg-yellow-50"
+                            onClick={() => handleUpdateStatus(item.id, 'Baru')}
+                            title="Kembalikan ke Baru"
+                          >
+                            <Clock className="w-4 h-4" />
+                          </Button>
+                        )}
                         {userRole === 'Owner' && (
                           <Button
                             size="sm"
