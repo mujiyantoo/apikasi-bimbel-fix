@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Plus, RefreshCw, DollarSign, Trash2 } from 'lucide-react'
@@ -108,7 +108,6 @@ export default function KinerjaPage() {
     }
   }
 
-  // Hapus hanya untuk Owner
   const handleDelete = async (id) => {
     if (!confirm('Yakin hapus data kinerja ini?')) return
     try {
@@ -190,14 +189,12 @@ export default function KinerjaPage() {
                       <SelectTrigger><SelectValue placeholder="Pilih Jenjang" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="SD">SD — Rp 24.000/sesi</SelectItem>
-                        <SelectItem value="SMP">SMP — Rp 26.000/sesi</SelectItem>
+                        <SelectItem value="SMP">SMP — Rp 25.000/sesi</SelectItem>
                         <SelectItem value="SMA">SMA — Rp 22.000/sesi</SelectItem>
                       </SelectContent>
                     </Select>
                     {formData.jenjang && (
-                      <p className="text-xs text-blue-600 mt-1">
-                        Tarif Reguler: {TARIF_INFO[formData.jenjang]}
-                      </p>
+                      <p className="text-xs text-blue-600 mt-1">Tarif Reguler: {TARIF_INFO[formData.jenjang]}</p>
                     )}
                   </div>
                   <div>
@@ -215,8 +212,12 @@ export default function KinerjaPage() {
                   </div>
                 </div>
                 <div>
-                  <Label>Keterangan</Label>
-                  <Input value={formData.keterangan} onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })} placeholder="Opsional" />
+                  <Label>Keterangan / Materi</Label>
+                  <Input
+                    value={formData.keterangan}
+                    onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })}
+                    placeholder="Contoh: Matematika Bab 3 - Persamaan Linear"
+                  />
                 </div>
                 <div className="flex gap-2 justify-end">
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Batal</Button>
@@ -265,7 +266,7 @@ export default function KinerjaPage() {
             </div>
             <div className="bg-green-50 rounded-lg p-3 text-center border border-green-100">
               <p className="text-xs text-gray-500">SMP Reguler</p>
-              <p className="font-bold text-green-700">Rp 26.000/sesi</p>
+              <p className="font-bold text-green-700">Rp 25.000/sesi</p>
             </div>
             <div className="bg-purple-50 rounded-lg p-3 text-center border border-purple-100">
               <p className="text-xs text-gray-500">SMA Reguler</p>
@@ -298,6 +299,7 @@ export default function KinerjaPage() {
                     <th className="px-4 py-3 text-left">Durasi</th>
                     <th className="px-4 py-3 text-left">Jenjang</th>
                     <th className="px-4 py-3 text-left">Kategori</th>
+                    <th className="px-4 py-3 text-left">Keterangan / Materi</th>
                     <th className="px-4 py-3 text-left">Gaji</th>
                     {userRole === 'Owner' && <th className="px-4 py-3 text-left">Aksi</th>}
                   </tr>
@@ -305,21 +307,38 @@ export default function KinerjaPage() {
                 <tbody className="divide-y">
                   {kinerja.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">{new Date(item.tanggal).toLocaleDateString('id-ID')}</td>
-                      <td className="px-4 py-3">{item.pengajar_nama}</td>
-                      <td className="px-4 py-3">{item.jam_mulai} - {item.jam_selesai}</td>
-                      <td className="px-4 py-3">{item.menit_mengajar} menit</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {new Date(item.tanggal).toLocaleDateString('id-ID')}
+                      </td>
+                      <td className="px-4 py-3 font-medium">
+                        {item.pengajar_nama || '-'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {item.jam_mulai} - {item.jam_selesai}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {item.menit_mengajar} menit
+                      </td>
                       <td className="px-4 py-3">{item.jenjang}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 rounded text-xs font-medium ${item.kategori === 'Reguler' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
                           {item.kategori}
                         </span>
                       </td>
-                      <td className="px-4 py-3 font-semibold text-green-600">{formatRupiah(item.gaji)}</td>
-                      {/* Tombol hapus hanya untuk Owner */}
+                      <td className="px-4 py-3 text-gray-600 italic">
+                        {item.keterangan || <span className="text-gray-300">-</span>}
+                      </td>
+                      <td className="px-4 py-3 font-semibold text-green-600 whitespace-nowrap">
+                        {formatRupiah(item.gaji)}
+                      </td>
                       {userRole === 'Owner' && (
                         <td className="px-4 py-3">
-                          <Button size="sm" variant="outline" className="text-red-600 hover:bg-red-50" onClick={() => handleDelete(item.id)}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 hover:bg-red-50"
+                            onClick={() => handleDelete(item.id)}
+                          >
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </td>
