@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, RefreshCw, DollarSign, Trash2 } from 'lucide-react'
+import { Plus, RefreshCw, DollarSign, Trash2, ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 
 const bulanOptions = [
@@ -140,9 +141,17 @@ export default function KinerjaPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Kinerja Pengajar</h1>
-          <p className="text-sm text-gray-500">Catat dan hitung gaji mengajar</p>
+        <div className="flex items-center gap-3">
+          {/* ✅ TOMBOL KEMBALI KE ABSENSI */}
+          <Link href="/absensi">
+            <Button variant="outline" size="sm" className="gap-1">
+              <ArrowLeft className="w-4 h-4" /> Absensi
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Kinerja Pengajar</h1>
+            <p className="text-sm text-gray-500">Catat dan hitung gaji mengajar</p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button onClick={fetchKinerja} variant="outline" size="sm">
