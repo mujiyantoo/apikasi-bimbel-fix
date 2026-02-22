@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { signIn, signOut, useSession } from 'next-auth/react'
-import { MapPin, LogIn, LogOut, Clock, CheckCircle, XCircle, Loader2, AlertCircle, TrendingUp } from 'lucide-react'
+import Link from 'next/link'
+import { MapPin, LogIn, LogOut, Clock, CheckCircle, XCircle, Loader2, AlertCircle, TrendingUp, ChevronRight } from 'lucide-react'
 
 export default function AbsensiPage() {
   const { data: session, status } = useSession()
@@ -16,8 +17,7 @@ export default function AbsensiPage() {
   const [password, setPassword] = useState('')
   const [loginLoading, setLoginLoading] = useState(false)
   const [loginError, setLoginError] = useState('')
-  const [kinerjaList, setKinerjaList] = useState([])
-  const [showKinerja, setShowKinerja] = useState(false)
+  const [kinerjaRingkasan, setKinerjaRingkasan] = useState({ jumlah: 0, total: 0 })
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -31,7 +31,7 @@ export default function AbsensiPage() {
     if (session) {
       ambilLokasi()
       fetchAbsensiHariIni()
-      fetchKinerjaSaya()
+      fetchKinerjaRingkasan()
     }
   }, [session])
 
@@ -56,14 +56,17 @@ export default function AbsensiPage() {
     } catch (err) { console.error(err) }
   }
 
-  const fetchKinerjaSaya = async () => {
+  const fetchKinerjaRingkasan = async () => {
     if (!session) return
     try {
       const bulan = new Date().getMonth() + 1
       const tahun = new Date().getFullYear()
       const res = await fetch(`/api/kinerja?pengajar_id=${session.user.id}&bulan=${bulan}&tahun=${tahun}`)
       const data = await res.json()
-      setKinerjaList(Array.isArray(data) ? data : [])
+      if (Array.isArray(data)) {
+        const total = data.reduce((sum, k) => sum + (k.gaji || 0), 0)
+        setKinerjaRingkasan({ jumlah: data.length, total })
+      }
     } catch (err) { console.error(err) }
   }
 
@@ -115,8 +118,6 @@ export default function AbsensiPage() {
   const formatRupiah = (angka) => new Intl.NumberFormat('id-ID', {
     style: 'currency', currency: 'IDR', minimumFractionDigits: 0
   }).format(angka)
-
-  const totalGaji = kinerjaList.reduce((sum, k) => sum + (k.gaji || 0), 0)
 
   if (status === 'loading') {
     return (
@@ -180,7 +181,7 @@ export default function AbsensiPage() {
     )
   }
 
-  // Halaman Absensi + Kinerja Pribadi
+  // Halaman Absensi
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 px-4 py-8">
       <div className="max-w-sm mx-auto space-y-4">
@@ -271,52 +272,22 @@ export default function AbsensiPage() {
 
         <p className="text-center text-xs text-gray-400">Absensi hanya bisa dilakukan dalam radius 20 meter dari kantor</p>
 
-        {/* Kinerja Bulan Ini */}
-        <div className="bg-white rounded-2xl shadow-md overflow-hidden">
-          <button
-            onClick={() => setShowKinerja(!showKinerja)}
-            className="w-full p-4 flex items-center justify-between hover:bg-gray-50"
-          >
-            <div className="flex items-center gap-2">
+        {/* ✅ LINK KE HALAMAN KINERJA */}
+        <Link
+          href="/kinerja"
+          className="bg-white rounded-2xl shadow-md p-4 flex items-center justify-between hover:bg-blue-50 transition-colors group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center group-hover:bg-blue-200 transition-colors">
               <TrendingUp className="w-5 h-5 text-blue-600" />
-              <span className="font-bold text-gray-900">Kinerja Bulan Ini</span>
             </div>
-            <div className="text-right">
-              <p className="font-bold text-green-600 text-sm">{formatRupiah(totalGaji)}</p>
-              <p className="text-xs text-gray-400">{kinerjaList.length} sesi</p>
+            <div>
+              <p className="font-bold text-gray-900 text-sm">Kinerja Bulan Ini</p>
+              <p className="text-xs text-gray-500">{kinerjaRingkasan.jumlah} sesi · {formatRupiah(kinerjaRingkasan.total)}</p>
             </div>
-          </button>
-
-          {showKinerja && (
-            <div className="border-t">
-              {kinerjaList.length === 0 ? (
-                <p className="text-center text-gray-400 text-sm py-4">Belum ada data kinerja bulan ini</p>
-              ) : (
-                <div className="divide-y">
-                  {kinerjaList.map((item, i) => (
-                    <div key={i} className="p-3 flex items-center justify-between text-sm">
-                      <div>
-                        <p className="font-medium text-gray-800">
-                          {new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
-                          {' '}<span className="text-gray-500">{item.jam_mulai}-{item.jam_selesai}</span>
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {item.jenjang} • {item.kategori}
-                          {item.keterangan ? ` • ${item.keterangan}` : ''}
-                        </p>
-                      </div>
-                      <p className="font-semibold text-green-600">{formatRupiah(item.gaji)}</p>
-                    </div>
-                  ))}
-                  <div className="p-3 bg-green-50 flex justify-between font-bold text-sm">
-                    <span className="text-gray-700">Total Bulan Ini</span>
-                    <span className="text-green-600">{formatRupiah(totalGaji)}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
+        </Link>
 
       </div>
     </div>
