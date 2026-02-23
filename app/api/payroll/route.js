@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
-
 export const dynamic = 'force-dynamic'
 
 export async function GET(request) {
@@ -24,15 +23,28 @@ export async function GET(request) {
       const pid = item.pengajar_id
 
       if (!payrollMap[pid]) {
-        let pengajar_nama = 'Tidak diketahui'
-        try {
-          if (pid && ObjectId.isValid(pid)) {
-            const pengajar = await db.collection('pegawai').findOne({
-              _id: new ObjectId(pid)
-            })
-            pengajar_nama = pengajar?.nama || 'Tidak diketahui'
-          }
-        } catch (e) {}
+        // Prioritas 1: ambil dari field pengajar_nama yang tersimpan di dokumen kinerja
+        let pengajar_nama = item.pengajar_nama || ''
+
+        // Prioritas 2: kalau kosong, baru lookup ke collection pegawai
+        if (!pengajar_nama) {
+          try {
+            if (pid && ObjectId.isValid(pid)) {
+              const pegawai = await db.collection('pegawai').findOne({ _id: new ObjectId(pid) })
+              pengajar_nama = pegawai?.nama || ''
+            }
+          } catch (e) {}
+        }
+
+        // Prioritas 3: kalau masih kosong, coba cari di users
+        if (!pengajar_nama) {
+          try {
+            if (pid && ObjectId.isValid(pid)) {
+              const user = await db.collection('users').findOne({ _id: new ObjectId(pid) })
+              pengajar_nama = user?.nama || user?.name || 'Tidak diketahui'
+            }
+          } catch (e) {}
+        }
 
         payrollMap[pid] = {
           pengajar_id: pid,
