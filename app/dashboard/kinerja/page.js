@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, RefreshCw, DollarSign, Loader2, Plus, X } from 'lucide-react'
+import { RoleProtector } from '@/components/RoleProtector'
 
 const bulanOptions = [
   { value: 1, label: 'Januari' }, { value: 2, label: 'Februari' },
@@ -180,9 +181,9 @@ export default function KinerjaSayaPage() {
     )
   }
 
-  return (
+ return (
+  <RoleProtector allowedRoles={['Owner']}>
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="max-w-4xl mx-auto space-y-4">
 
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -388,5 +389,6 @@ export default function KinerjaSayaPage() {
         </Card>
       </div>
     </div>
+ </RoleProtector>
   )
 }
