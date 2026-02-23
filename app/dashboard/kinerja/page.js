@@ -96,13 +96,16 @@ export default function KinerjaSayaPage() {
     const m2 = parseInt(parts2[1])
     const menit = (h2 * 60 + m2) - (h1 * 60 + m1)
     if (menit <= 0) return 0
-    const sesi = Math.floor(menit / 60)
-    const tarif = {
-      'SD': { 'Reguler': 24000, 'Private': 30000 },
-      'SMP': { 'Reguler': 25000, 'Private': 32000 },
-      'SMA': { 'Reguler': 22000, 'Private': 35000 }
+
+    const tarifReguler = { 'SD': 24000, 'SMP': 25000, 'SMA': 22000 }
+    const tarifPR = { 'SD': 24000, 'SMP': 25000, 'SMA': 33000 }
+
+    if (kategori === 'Reguler') {
+      const sesi = Math.floor(menit / 60)
+      return (tarifReguler[jenjang] || 0) * sesi
+    } else {
+      return Math.round((menit / 90) * 0.75 * (tarifPR[jenjang] || 0))
     }
-    return (tarif[jenjang] && tarif[jenjang][kategori] ? tarif[jenjang][kategori] : 0) * sesi
   }
 
   const handleSubmit = async () => {
@@ -297,21 +300,23 @@ export default function KinerjaSayaPage() {
           </CardHeader>
           <CardContent>
 
-            <div className="mb-4 grid grid-cols-3 gap-3">
-              <div className="bg-blue-50 rounded-lg p-3 text-center border border-blue-100">
-                <p className="text-xs text-gray-500">SD Reguler</p>
-                <p className="font-bold text-blue-700">Rp 24.000/sesi</p>
+            {/* Info tarif */}
+            <div className="mb-4 grid grid-cols-2 gap-3">
+              <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                <p className="text-xs font-semibold text-blue-700 mb-1">Reguler (per sesi)</p>
+                <p className="text-xs text-gray-600">SD: Rp 24.000</p>
+                <p className="text-xs text-gray-600">SMP: Rp 25.000</p>
+                <p className="text-xs text-gray-600">SMA: Rp 22.000</p>
               </div>
-              <div className="bg-green-50 rounded-lg p-3 text-center border border-green-100">
-                <p className="text-xs text-gray-500">SMP Reguler</p>
-                <p className="font-bold text-green-700">Rp 25.000/sesi</p>
-              </div>
-              <div className="bg-purple-50 rounded-lg p-3 text-center border border-purple-100">
-                <p className="text-xs text-gray-500">SMA Reguler</p>
-                <p className="font-bold text-purple-700">Rp 22.000/sesi</p>
+              <div className="bg-orange-50 rounded-lg p-3 border border-orange-100">
+                <p className="text-xs font-semibold text-orange-700 mb-1">PR (menit/90 × 0,75 × tarif)</p>
+                <p className="text-xs text-gray-600">SD: Rp 24.000</p>
+                <p className="text-xs text-gray-600">SMP: Rp 25.000</p>
+                <p className="text-xs text-gray-600">SMA: Rp 33.000</p>
               </div>
             </div>
 
+            {/* Total Gaji */}
             <div className="mb-4 p-4 bg-green-50 rounded-lg border border-green-200">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-green-700">Total Gaji Bulan Ini:</span>
