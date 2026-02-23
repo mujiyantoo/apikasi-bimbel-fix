@@ -21,7 +21,7 @@ const bulanOptions = [
 ]
 
 const jenjangOptions = ['SD', 'SMP', 'SMA']
-const kategoriOptions = ['Reguler', 'Private']
+const kategoriOptions = ['Reguler', 'PR']
 
 const defaultForm = {
   tanggal: new Date().toISOString().split('T')[0],
