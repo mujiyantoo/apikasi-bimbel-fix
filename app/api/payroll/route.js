@@ -27,30 +27,21 @@ export async function GET(request) {
         let pengajar_nama = item.pengajar_nama || ''
 
         // Prioritas 2: kalau kosong, baru lookup ke collection pegawai
-        if (!pengajar_nama) {
+       // Prioritas 2: lookup ke collection pegawai pakai field id
+if (!pengajar_nama) {
   try {
-    if (pid && ObjectId.isValid(pid)) {
-      console.log('DEBUG pid:', pid, 'isValid:', ObjectId.isValid(pid))
-      const pegawai = await db.collection('pegawai').findOne({ _id: new ObjectId(pid) })
-      console.log('DEBUG pegawai result:', pegawai)
-      pengajar_nama = pegawai?.nama || ''
-    } else {
-      console.log('DEBUG pid tidak valid atau kosong:', pid)
-    }
-  } catch (e) {
-    console.log('DEBUG error:', e.message)
-  }
+    const pegawai = await db.collection('pegawai').findOne({ id: pid })
+    pengajar_nama = pegawai?.nama || ''
+  } catch (e) {}
 }
 
-        // Prioritas 3: kalau masih kosong, coba cari di users
-        if (!pengajar_nama) {
-          try {
-            if (pid && ObjectId.isValid(pid)) {
-              const user = await db.collection('users').findOne({ _id: new ObjectId(pid) })
-              pengajar_nama = user?.nama || user?.name || 'Tidak diketahui'
-            }
-          } catch (e) {}
-        }
+// Prioritas 3: cari di users
+if (!pengajar_nama) {
+  try {
+    const user = await db.collection('users').findOne({ id: pid })
+    pengajar_nama = user?.nama || user?.name || 'Tidak diketahui'
+  } catch (e) {}
+}
 
         payrollMap[pid] = {
           pengajar_id: pid,
