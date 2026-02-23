@@ -28,13 +28,19 @@ export async function GET(request) {
 
         // Prioritas 2: kalau kosong, baru lookup ke collection pegawai
         if (!pengajar_nama) {
-          try {
-            if (pid && ObjectId.isValid(pid)) {
-              const pegawai = await db.collection('pegawai').findOne({ _id: new ObjectId(pid) })
-              pengajar_nama = pegawai?.nama || ''
-            }
-          } catch (e) {}
-        }
+  try {
+    if (pid && ObjectId.isValid(pid)) {
+      console.log('DEBUG pid:', pid, 'isValid:', ObjectId.isValid(pid))
+      const pegawai = await db.collection('pegawai').findOne({ _id: new ObjectId(pid) })
+      console.log('DEBUG pegawai result:', pegawai)
+      pengajar_nama = pegawai?.nama || ''
+    } else {
+      console.log('DEBUG pid tidak valid atau kosong:', pid)
+    }
+  } catch (e) {
+    console.log('DEBUG error:', e.message)
+  }
+}
 
         // Prioritas 3: kalau masih kosong, coba cari di users
         if (!pengajar_nama) {
