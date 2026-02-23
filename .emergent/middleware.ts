@@ -29,7 +29,7 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  if (pathname.startsWith('/kinerja-saya')) {
+  if (pathname.startsWith('/dashboard/kinerja')) {
     if (role !== 'pegawai') {
       return NextResponse.redirect(new URL('/dashboard', req.url))
     }
@@ -39,5 +39,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/kinerja-saya/:path*']
+  matcher: ['/dashboard/:path*', '/dashboard/kinerja/:path*']
 }
