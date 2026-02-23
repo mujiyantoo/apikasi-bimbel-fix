@@ -62,7 +62,6 @@ export default function AbsensiPage() {
       const bulan = new Date().getMonth() + 1
       const tahun = new Date().getFullYear()
 
-      // Cari pegawai berdasarkan nama yang sama di collection pegawai
       const resPegawai = await fetch('/api/pegawai')
       const dataPegawai = await resPegawai.json()
       const list = Array.isArray(dataPegawai) ? dataPegawai : []
@@ -290,7 +289,7 @@ export default function AbsensiPage() {
 
         {/* Link Kinerja */}
         <Link
-          href="/kinerja-saya"
+          href="/dashboard/kinerja"
           className="bg-white rounded-2xl shadow-md p-4 flex items-center justify-between hover:bg-blue-50 transition-colors group"
         >
           <div className="flex items-center gap-3">
