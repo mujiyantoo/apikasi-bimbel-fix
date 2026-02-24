@@ -67,53 +67,77 @@ export default function PayrollPage() {
   const namaBulan = bulanOptions.find(b => b.value === filterBulan)?.label
 
   const exportToExcel = () => {
-    const dataToExport = []
-    payroll.forEach(item => {
+  const dataToExport = []
+  payroll.forEach(item => {
+    dataToExport.push({
+      'Pengajar': item.pengajar_nama,
+      'Tanggal': '',
+      'Jam': '',
+      'Durasi': '',
+      'Jenjang': '',
+      'Kategori': '',
+      'Keterangan': '',
+      'Gaji': item.total_gaji,
+    })
+    item.rincian.forEach(r => {
       dataToExport.push({
-        'Pengajar': item.pengajar_nama,
-        'Total Gaji': item.total_gaji,
-        'Total Jam': formatJam(item.total_jam),
-        'Jumlah Sesi': item.jumlah_sesi
-      })
-      item.rincian.forEach(r => {
-        dataToExport.push({
-          'Pengajar': '  → ' + new Date(r.tanggal).toLocaleDateString('id-ID'),
-          'Total Gaji': r.gaji,
-          'Total Jam': r.jam_mulai + '-' + r.jam_selesai,
-          'Jumlah Sesi': r.jenjang + ' ' + r.kategori
-        })
+        'Pengajar': '',
+        'Tanggal': new Date(r.tanggal).toLocaleDateString('id-ID'),
+        'Jam': r.jam_mulai + ' - ' + r.jam_selesai,
+        'Durasi': r.menit_mengajar + ' mnt',
+        'Jenjang': r.jenjang,
+        'Kategori': r.kategori,
+        'Keterangan': r.keterangan || '-',
+        'Gaji': r.gaji,
       })
     })
-    const ws = XLSX.utils.json_to_sheet(dataToExport)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Payroll')
-    XLSX.writeFile(wb, 'Payroll_' + namaBulan + '_' + filterTahun + '.xlsx')
-  }
-
+  })
+  const ws = XLSX.utils.json_to_sheet(dataToExport)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Payroll')
+  XLSX.writeFile(wb, 'Payroll_' + namaBulan + '_' + filterTahun + '.xlsx')
+}
   const exportToPDF = () => {
-    const doc = new jsPDF()
-    doc.setFontSize(16)
-    doc.text('LAPORAN PAYROLL PENGAJAR', 14, 15)
-    doc.setFontSize(10)
-    doc.text('Periode: ' + namaBulan + ' ' + filterTahun, 14, 22)
-    const tableData = payroll.map(item => [
-      item.pengajar_nama,
-      formatRupiah(item.total_gaji),
-      formatJam(item.total_jam),
-      item.jumlah_sesi + ' sesi'
+  const doc = new jsPDF({ orientation: 'landscape' })
+  doc.setFontSize(16)
+  doc.text('LAPORAN PAYROLL PENGAJAR', 14, 15)
+  doc.setFontSize(10)
+  doc.text('Periode: ' + namaBulan + ' ' + filterTahun, 14, 22)
+
+  const tableData = []
+  payroll.forEach(item => {
+    tableData.push([
+      { content: item.pengajar_nama, colSpan: 7, styles: { fontStyle: 'bold', fillColor: [239, 246, 255] } }
     ])
-    doc.autoTable({
-      startY: 28,
-      head: [['Pengajar', 'Total Gaji', 'Total Jam', 'Jumlah Sesi']],
-      body: tableData,
-      foot: [['TOTAL KESELURUHAN', formatRupiah(totalKeseluruhan), formatJam(totalJamKeseluruhan), totalSesiKeseluruhan + ' sesi']],
-      theme: 'grid',
-      headStyles: { fillColor: [59, 130, 246] },
-      footStyles: { fillColor: [34, 197, 94], fontStyle: 'bold' },
-      styles: { fontSize: 9 }
+    item.rincian.forEach(r => {
+      tableData.push([
+        new Date(r.tanggal).toLocaleDateString('id-ID'),
+        r.jam_mulai + ' - ' + r.jam_selesai,
+        r.menit_mengajar + ' mnt',
+        r.jenjang,
+        r.kategori,
+        r.keterangan || '-',
+        formatRupiah(r.gaji),
+      ])
     })
-    doc.save('Payroll_' + namaBulan + '_' + filterTahun + '.pdf')
-  }
+    tableData.push([
+      { content: 'Subtotal ' + item.pengajar_nama, colSpan: 6, styles: { fontStyle: 'bold', fillColor: [240, 253, 244] } },
+      { content: formatRupiah(item.total_gaji), styles: { fontStyle: 'bold', textColor: [22, 163, 74], fillColor: [240, 253, 244] } }
+    ])
+  })
+
+  doc.autoTable({
+    startY: 28,
+    head: [['Tanggal', 'Jam', 'Durasi', 'Jenjang', 'Kategori', 'Keterangan', 'Gaji']],
+    body: tableData,
+    foot: [['TOTAL KESELURUHAN', '', '', '', '', '', formatRupiah(totalKeseluruhan)]],
+    theme: 'grid',
+    headStyles: { fillColor: [59, 130, 246] },
+    footStyles: { fillColor: [34, 197, 94], fontStyle: 'bold' },
+    styles: { fontSize: 8 }
+  })
+  doc.save('Payroll_' + namaBulan + '_' + filterTahun + '.pdf')
+}
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6">
