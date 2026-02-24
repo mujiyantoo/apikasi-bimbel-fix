@@ -129,6 +129,9 @@ export default function AbsensiPage() {
     return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()
   }
 
+  const sudahMasuk = !!absensiHariIni?.waktu_masuk
+  const sudahKeluar = !!absensiHariIni?.waktu_keluar
+
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#0f172a' }}>
@@ -142,22 +145,20 @@ export default function AbsensiPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6"
         style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)' }}>
-
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-          .font-jakarta { font-family: 'Plus Jakarta Sans', sans-serif; }
+          * { font-family: 'Plus Jakarta Sans', sans-serif; }
           .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
-          .input-dark { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); color: white; border-radius: 12px; padding: 14px 16px; width: 100%; font-size: 14px; outline: none; transition: all 0.2s; }
+          .input-dark { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); color: white; border-radius: 12px; padding: 14px 16px; width: 100%; font-size: 14px; outline: none; transition: all 0.2s; box-sizing: border-box; }
           .input-dark::placeholder { color: rgba(255,255,255,0.3); }
           .input-dark:focus { border-color: rgba(99,102,241,0.6); background: rgba(255,255,255,0.1); }
-          .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; color: white; font-weight: 700; padding: 14px; border-radius: 12px; width: 100%; cursor: pointer; font-size: 15px; transition: all 0.2s; }
-          .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
-          .btn-primary:active { transform: scale(0.98); }
-          .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+          .btn-login { background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; color: white; font-weight: 700; padding: 14px; border-radius: 12px; width: 100%; cursor: pointer; font-size: 15px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+          .btn-login:hover { opacity: 0.9; }
+          .btn-login:active { transform: scale(0.98); }
+          .btn-login:disabled { opacity: 0.5; cursor: not-allowed; }
         `}</style>
 
-        {/* Logo */}
-        <div className="mb-10 text-center font-jakarta">
+        <div className="mb-8 text-center">
           <div className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-5 glass">
             <span className="text-3xl">🎓</span>
           </div>
@@ -165,11 +166,9 @@ export default function AbsensiPage() {
           <p className="text-slate-400 text-sm mt-1">Nusantara · Sistem Absensi</p>
         </div>
 
-        {/* Form */}
-        <div className="glass rounded-3xl p-7 w-full max-w-sm font-jakarta">
+        <div className="glass rounded-3xl p-7 w-full max-w-sm">
           <h2 className="text-xl font-bold text-white mb-1">Masuk</h2>
           <p className="text-slate-400 text-sm mb-6">Gunakan akun pegawai Anda</p>
-
           <form onSubmit={handleLogin} className="space-y-3">
             <div>
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-widest block mb-2">Email</label>
@@ -181,15 +180,14 @@ export default function AbsensiPage() {
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
                 className="input-dark" placeholder="••••••••" required />
             </div>
-
             {loginError && (
-              <div className="flex items-center gap-2 text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-2 text-red-400 text-sm px-4 py-3 rounded-xl"
+                style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
                 <XCircle className="w-4 h-4 shrink-0" /> {loginError}
               </div>
             )}
-
             <div className="pt-2">
-              <button type="submit" disabled={loginLoading} className="btn-primary flex items-center justify-center gap-2">
+              <button type="submit" disabled={loginLoading} className="btn-login">
                 {loginLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
                 {loginLoading ? 'Masuk...' : 'Masuk'}
               </button>
@@ -201,150 +199,154 @@ export default function AbsensiPage() {
   }
 
   // ─── MAIN PAGE ────────────────────────────────────────────────
-  const sudahMasuk = !!absensiHariIni?.waktu_masuk
-  const sudahKeluar = !!absensiHariIni?.waktu_keluar
-
   return (
-    <div className="min-h-screen font-jakarta" style={{ background: '#f1f5f9' }}>
+    <div style={{ minHeight: '100vh', background: '#f1f5f9', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        .font-jakarta { font-family: 'Plus Jakarta Sans', sans-serif; }
+        * { font-family: 'Plus Jakarta Sans', sans-serif; box-sizing: border-box; }
+        .absen-btn { border: none; cursor: pointer; border-radius: 20px; padding: 20px 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; transition: all 0.2s; width: 100%; }
+        .absen-btn:active { transform: scale(0.97); }
+        .absen-btn:disabled { cursor: not-allowed; opacity: 1; }
       `}</style>
 
-      {/* Top bar gelap */}
-      <div className="px-5 pt-8 pb-20 relative"
-        style={{ background: 'linear-gradient(160deg, #0f172a 0%, #1e3a5f 100%)' }}>
+      {/* HEADER - warna gelap, tidak ada trick negative margin */}
+      <div style={{ background: 'linear-gradient(160deg, #0f172a 0%, #1e3a5f 100%)', padding: '36px 20px 24px' }}>
+        <div style={{ maxWidth: 400, margin: '0 auto' }}>
 
-        {/* Tanggal + GPS */}
-        <div className="flex items-center justify-between mb-6">
-          <p className="text-slate-400 text-xs font-medium">{tanggalSekarang}</p>
-          <button onClick={ambilLokasi}
-            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
-              lokasi
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                : 'bg-red-500/10 border-red-500/30 text-red-400'
-            }`}>
-            <Navigation className="w-3 h-3" />
-            {lokasi ? `±${lokasi.akurasi}m` : 'GPS Off'}
-          </button>
+          {/* Baris tanggal & GPS */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <p style={{ color: '#94a3b8', fontSize: 12, margin: 0 }}>{tanggalSekarang}</p>
+            <button onClick={ambilLokasi} style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              fontSize: 11, fontWeight: 700, padding: '6px 12px', borderRadius: 999, cursor: 'pointer',
+              background: lokasi ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+              border: lokasi ? '1px solid rgba(16,185,129,0.3)' : '1px solid rgba(239,68,68,0.3)',
+              color: lokasi ? '#34d399' : '#f87171'
+            }}>
+              <Navigation size={11} />
+              {lokasi ? `±${lokasi.akurasi}m` : 'GPS Off · Tap'}
+            </button>
+          </div>
+
+          {/* Jam besar */}
+          <p style={{ color: 'white', fontWeight: 800, fontSize: 52, textAlign: 'center', letterSpacing: -3, margin: 0, lineHeight: 1 }}>
+            {jamSekarang}
+          </p>
         </div>
-
-        {/* Jam besar */}
-        <p className="text-white font-bold text-center tracking-tight"
-          style={{ fontSize: '3.5rem', lineHeight: 1, letterSpacing: '-2px' }}>
-          {jamSekarang}
-        </p>
       </div>
 
-      {/* Card utama - floating */}
-      <div className="px-4 -mt-14 space-y-3 pb-8 max-w-sm mx-auto">
+      {/* CONTENT - normal flow, tidak overlap */}
+      <div style={{ maxWidth: 400, margin: '0 auto', padding: '16px 16px 40px' }}>
 
-        {/* Profil card */}
-        <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
+        {/* Profil + Jam Masuk/Keluar */}
+        <div style={{ background: 'white', borderRadius: 24, overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', marginBottom: 12 }}>
           {/* Header profil */}
-          <div className="px-5 pt-5 pb-4 flex items-center gap-4"
-            style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' }}>
-            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shrink-0">
-              <span className="text-white font-bold text-lg">{getInitials(session.user.name)}</span>
+          <div style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 46, height: 46, background: 'rgba(255,255,255,0.2)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <span style={{ color: 'white', fontWeight: 800, fontSize: 18 }}>{getInitials(session.user.name)}</span>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-indigo-200 text-xs font-semibold uppercase tracking-widest">{session.user.role}</p>
-              <p className="text-white font-bold text-base truncate">{session.user.name}</p>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ color: '#c4b5fd', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 2, margin: '0 0 2px' }}>{session.user.role}</p>
+              <p style={{ color: 'white', fontWeight: 700, fontSize: 16, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.user.name}</p>
             </div>
           </div>
 
-          {/* Jam masuk & keluar */}
-          <div className="grid grid-cols-2 divide-x divide-slate-100">
-            <div className="px-5 py-4">
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-widest mb-1.5">Datang</p>
-              <p className={`text-xl font-bold ${sudahMasuk ? 'text-slate-800' : 'text-slate-200'}`}>
+          {/* Waktu masuk & keluar */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #f1f5f9' }}>
+            <div style={{ padding: '16px 20px', borderRight: '1px solid #f1f5f9' }}>
+              <p style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 6px' }}>Datang</p>
+              <p style={{ fontSize: 22, fontWeight: 800, color: sudahMasuk ? '#1e293b' : '#e2e8f0', margin: '0 0 4px' }}>
                 {sudahMasuk ? formatJam(absensiHariIni.waktu_masuk) : '--:--'}
               </p>
-              {sudahMasuk && <p className="text-xs text-emerald-500 font-medium mt-1">✓ Tercatat</p>}
+              {sudahMasuk && <p style={{ fontSize: 11, color: '#10b981', fontWeight: 600, margin: 0 }}>✓ Tercatat</p>}
             </div>
-            <div className="px-5 py-4">
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-widest mb-1.5">Pulang</p>
-              <p className={`text-xl font-bold ${sudahKeluar ? 'text-slate-800' : 'text-slate-200'}`}>
+            <div style={{ padding: '16px 20px' }}>
+              <p style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 6px' }}>Pulang</p>
+              <p style={{ fontSize: 22, fontWeight: 800, color: sudahKeluar ? '#1e293b' : '#e2e8f0', margin: '0 0 4px' }}>
                 {sudahKeluar ? formatJam(absensiHariIni.waktu_keluar) : '--:--'}
               </p>
-              {sudahKeluar && <p className="text-xs text-blue-500 font-medium mt-1">✓ Tercatat</p>}
+              {sudahKeluar && <p style={{ fontSize: 11, color: '#6366f1', fontWeight: 600, margin: 0 }}>✓ Tercatat</p>}
             </div>
           </div>
         </div>
 
         {/* Pesan */}
         {pesan && (
-          <div className={`rounded-2xl px-4 py-3 flex items-center gap-3 text-sm font-medium ${
-            pesan.type === 'success'
-              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-              : 'bg-red-50 text-red-700 border border-red-200'
-          }`}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px',
+            borderRadius: 16, fontSize: 13, fontWeight: 500, marginBottom: 12,
+            background: pesan.type === 'success' ? '#f0fdf4' : '#fef2f2',
+            border: pesan.type === 'success' ? '1px solid #bbf7d0' : '1px solid #fecaca',
+            color: pesan.type === 'success' ? '#15803d' : '#dc2626'
+          }}>
             {pesan.type === 'success'
-              ? <CheckCircle className="w-5 h-5 shrink-0" />
-              : <AlertCircle className="w-5 h-5 shrink-0" />}
+              ? <CheckCircle size={18} style={{ flexShrink: 0 }} />
+              : <AlertCircle size={18} style={{ flexShrink: 0 }} />}
             {pesan.text}
           </div>
         )}
 
         {/* Tombol Absen */}
-        <div className="grid grid-cols-2 gap-3">
-          <button onClick={() => handleAbsen('masuk')}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
+          <button
+            className="absen-btn"
+            onClick={() => handleAbsen('masuk')}
             disabled={loading || sudahMasuk || !lokasi}
-            className="rounded-2xl py-5 flex flex-col items-center gap-2 font-bold text-sm transition-all active:scale-95 disabled:cursor-not-allowed shadow-lg"
             style={{
-              background: sudahMasuk || !lokasi
-                ? '#e2e8f0'
-                : 'linear-gradient(135deg, #10b981, #059669)',
+              background: sudahMasuk || !lokasi ? '#e2e8f0' : 'linear-gradient(135deg, #10b981, #059669)',
               color: sudahMasuk || !lokasi ? '#94a3b8' : 'white',
-              boxShadow: sudahMasuk || !lokasi ? 'none' : '0 8px 24px rgba(16,185,129,0.3)'
+              boxShadow: sudahMasuk || !lokasi ? 'none' : '0 8px 20px rgba(16,185,129,0.3)'
             }}>
-            {loading ? <Loader2 className="w-7 h-7 animate-spin" /> : <LogIn className="w-7 h-7" />}
+            {loading ? <Loader2 size={28} className="animate-spin" /> : <LogIn size={28} />}
             {sudahMasuk ? 'Sudah Masuk' : 'Absen Masuk'}
           </button>
 
-          <button onClick={() => handleAbsen('keluar')}
+          <button
+            className="absen-btn"
+            onClick={() => handleAbsen('keluar')}
             disabled={loading || !sudahMasuk || sudahKeluar || !lokasi}
-            className="rounded-2xl py-5 flex flex-col items-center gap-2 font-bold text-sm transition-all active:scale-95 disabled:cursor-not-allowed shadow-lg"
             style={{
-              background: !sudahMasuk || sudahKeluar || !lokasi
-                ? '#e2e8f0'
-                : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+              background: !sudahMasuk || sudahKeluar || !lokasi ? '#e2e8f0' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
               color: !sudahMasuk || sudahKeluar || !lokasi ? '#94a3b8' : 'white',
-              boxShadow: !sudahMasuk || sudahKeluar || !lokasi ? 'none' : '0 8px 24px rgba(99,102,241,0.3)'
+              boxShadow: !sudahMasuk || sudahKeluar || !lokasi ? 'none' : '0 8px 20px rgba(99,102,241,0.3)'
             }}>
-            {loading ? <Loader2 className="w-7 h-7 animate-spin" /> : <LogOut className="w-7 h-7" />}
+            {loading ? <Loader2 size={28} className="animate-spin" /> : <LogOut size={28} />}
             {sudahKeluar ? 'Sudah Keluar' : 'Absen Keluar'}
           </button>
         </div>
 
-        <p className="text-center text-xs text-slate-400 flex items-center justify-center gap-1">
-          <MapPin className="w-3 h-3" />
-          Radius 20 meter dari kantor
+        <p style={{ textAlign: 'center', fontSize: 11, color: '#94a3b8', margin: '0 0 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+          <MapPin size={11} /> Radius 20 meter dari kantor
         </p>
 
         {/* Kinerja Card */}
-        <Link href="/dashboard/kinerja"
-          className="bg-white rounded-2xl shadow-md p-4 flex items-center justify-between hover:shadow-lg transition-all active:scale-95 group block">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #ede9fe, #ddd6fe)' }}>
-              <TrendingUp className="w-5 h-5 text-violet-600" />
+        <Link href="/dashboard/kinerja" style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: 'white', borderRadius: 20, padding: '14px 16px',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.06)', textDecoration: 'none', marginBottom: 16
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 14, background: 'linear-gradient(135deg, #ede9fe, #ddd6fe)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <TrendingUp size={20} color="#7c3aed" />
             </div>
             <div>
-              <p className="font-bold text-slate-800 text-sm">Kinerja Bulan Ini</p>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p style={{ fontWeight: 700, color: '#1e293b', fontSize: 14, margin: '0 0 2px' }}>Kinerja Bulan Ini</p>
+              <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>
                 {kinerjaRingkasan.jumlah} sesi · {formatRupiah(kinerjaRingkasan.total)}
               </p>
             </div>
           </div>
-          <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-violet-500 transition-colors" />
+          <ChevronRight size={18} color="#cbd5e1" />
         </Link>
 
         {/* Keluar */}
-        <button onClick={() => signOut()}
-          className="w-full py-3 text-sm text-slate-400 hover:text-red-500 font-medium transition-colors">
+        <button onClick={() => signOut()} style={{
+          width: '100%', padding: '12px', background: 'none', border: 'none',
+          color: '#94a3b8', fontSize: 13, fontWeight: 500, cursor: 'pointer'
+        }}>
           Keluar dari Akun
         </button>
+
       </div>
     </div>
   )
