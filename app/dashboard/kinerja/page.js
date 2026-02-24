@@ -187,27 +187,30 @@ export default function KinerjaSayaPage() {
         <div className="max-w-4xl mx-auto space-y-4">
 
           {/* Header */}
+        <div className="flex flex-col gap-3">
+          {/* Baris 1: Kembali + Judul + Refresh */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" onClick={() => router.push('/absensi')} className="gap-1 bg-white">
-                <ArrowLeft className="w-4 h-4" /> Kembali
-              </Button>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Kinerja Saya</h1>
-                <p className="text-sm text-gray-500">{session && session.user && session.user.name}</p>
-              </div>
+            <Button variant="outline" size="sm" onClick={() => router.push('/absensi')} className="gap-1 bg-white shrink-0">
+              <ArrowLeft className="w-4 h-4" /> Kembali
+            </Button>
+            <div className="text-center flex-1 px-2">
+              <h1 className="text-lg font-bold text-gray-900 leading-tight">Kinerja Saya</h1>
+              <p className="text-xs text-gray-500 truncate">{session && session.user && session.user.name}</p>
             </div>
-            <div className="flex gap-2">
-              <Button onClick={fetchKinerja} variant="outline" size="sm" className="bg-white">
-                <RefreshCw className="w-4 h-4 mr-1" /> Refresh
-              </Button>
-              <Button onClick={() => { setShowForm(!showForm); setPesan(null) }} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
-                {showForm ? <X className="w-4 h-4 mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
-                {showForm ? 'Batal' : 'Tambah Kinerja'}
-              </Button>
-            </div>
+            <Button onClick={fetchKinerja} variant="outline" size="sm" className="bg-white shrink-0">
+              <RefreshCw className="w-4 h-4" />
+            </Button>
           </div>
-
+          {/* Baris 2: Tombol Tambah full width */}
+          <Button
+            onClick={() => { setShowForm(!showForm); setPesan(null) }}
+            size="sm"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            {showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+            {showForm ? 'Batal' : 'Tambah Kinerja'}
+          </Button>
+        </div>
           {/* Pesan */}
           {pesan && (
             <div className={'rounded-xl p-3 flex items-center gap-2 text-sm ' + (pesan.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700')}>
