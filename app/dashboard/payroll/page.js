@@ -100,7 +100,7 @@ export default function PayrollPage() {
   const exportToPDF = () => {
   const doc = new jsPDF({ orientation: 'landscape' })
   doc.setFontSize(16)
-  doc.text('LAPORAN PAYROLL PENGAJAR', 14, 15)
+  doc.text('LAPORAN PAYROLL PENGAJAR BIN BIMBEL CABANG PANUMBANGAN', 14, 15)
   doc.setFontSize(10)
   doc.text('Periode: ' + namaBulan + ' ' + filterTahun, 14, 22)
 
