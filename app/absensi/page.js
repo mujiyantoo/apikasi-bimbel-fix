@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { signIn, signOut, useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { MapPin, LogIn, LogOut, Clock, CheckCircle, XCircle, Loader2, AlertCircle, TrendingUp, ChevronRight, Fingerprint, Wifi, WifiOff } from 'lucide-react'
+import { MapPin, LogIn, LogOut, CheckCircle, XCircle, Loader2, AlertCircle, TrendingUp, ChevronRight, Navigation } from 'lucide-react'
 
 export default function AbsensiPage() {
   const { data: session, status } = useSession()
@@ -89,7 +89,7 @@ export default function AbsensiPage() {
   }
 
   const handleAbsen = async (tipe) => {
-    if (!lokasi) { setPesan({ type: 'error', text: 'GPS belum aktif. Klik tombol refresh lokasi.' }); return }
+    if (!lokasi) { setPesan({ type: 'error', text: 'GPS belum aktif. Ketuk status GPS untuk refresh.' }); return }
     setLoading(true)
     setPesan(null)
     try {
@@ -117,7 +117,7 @@ export default function AbsensiPage() {
 
   const formatJam = (date) => {
     if (!date) return '--:--'
-    return new Date(date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
+    return new Date(date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
   }
 
   const formatRupiah = (angka) => new Intl.NumberFormat('id-ID', {
@@ -126,155 +126,157 @@ export default function AbsensiPage() {
 
   const getInitials = (name) => {
     if (!name) return '?'
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()
   }
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-800">
-        <Loader2 className="w-10 h-10 animate-spin text-white" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0f172a' }}>
+        <Loader2 className="w-8 h-8 animate-spin text-white opacity-60" />
       </div>
     )
   }
 
-  // Login Page
+  // ─── LOGIN PAGE ───────────────────────────────────────────────
   if (!session) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-700 to-indigo-900 px-6">
-        <div className="mb-8 text-center">
-          <div className="w-20 h-20 bg-white/20 backdrop-blur rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-xl">
-            <Fingerprint className="w-10 h-10 text-white" />
+      <div className="min-h-screen flex flex-col items-center justify-center px-6"
+        style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)' }}>
+
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+          .font-jakarta { font-family: 'Plus Jakarta Sans', sans-serif; }
+          .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
+          .input-dark { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); color: white; border-radius: 12px; padding: 14px 16px; width: 100%; font-size: 14px; outline: none; transition: all 0.2s; }
+          .input-dark::placeholder { color: rgba(255,255,255,0.3); }
+          .input-dark:focus { border-color: rgba(99,102,241,0.6); background: rgba(255,255,255,0.1); }
+          .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; color: white; font-weight: 700; padding: 14px; border-radius: 12px; width: 100%; cursor: pointer; font-size: 15px; transition: all 0.2s; }
+          .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+          .btn-primary:active { transform: scale(0.98); }
+          .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        `}</style>
+
+        {/* Logo */}
+        <div className="mb-10 text-center font-jakarta">
+          <div className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-5 glass">
+            <span className="text-3xl">🎓</span>
           </div>
-          <h1 className="text-3xl font-bold text-white">Absensi</h1>
-          <p className="text-blue-200 text-sm mt-1">Bina Insan Nusantara</p>
+          <h1 className="text-3xl font-bold text-white">Bina Insan</h1>
+          <p className="text-slate-400 text-sm mt-1">Nusantara · Sistem Absensi</p>
         </div>
 
-        <div className="bg-white rounded-3xl shadow-2xl p-7 w-full max-w-sm">
-          <h2 className="text-xl font-bold text-gray-900 mb-1">Selamat Datang</h2>
-          <p className="text-gray-500 text-sm mb-6">Masuk untuk melakukan absensi</p>
+        {/* Form */}
+        <div className="glass rounded-3xl p-7 w-full max-w-sm font-jakarta">
+          <h2 className="text-xl font-bold text-white mb-1">Masuk</h2>
+          <p className="text-slate-400 text-sm mb-6">Gunakan akun pegawai Anda</p>
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-3">
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-                placeholder="email@bimbel.com"
-                required
-              />
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-widest block mb-2">Email</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                className="input-dark" placeholder="email@bimbel.com" required />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-                placeholder="••••••••"
-                required
-              />
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-widest block mb-2">Password</label>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                className="input-dark" placeholder="••••••••" required />
             </div>
+
             {loginError && (
-              <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl flex items-center gap-2 border border-red-100">
+              <div className="flex items-center gap-2 text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
                 <XCircle className="w-4 h-4 shrink-0" /> {loginError}
               </div>
             )}
-            <button
-              type="submit"
-              disabled={loginLoading}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-blue-200 transition-all active:scale-95"
-            >
-              {loginLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
-              {loginLoading ? 'Masuk...' : 'Masuk'}
-            </button>
+
+            <div className="pt-2">
+              <button type="submit" disabled={loginLoading} className="btn-primary flex items-center justify-center gap-2">
+                {loginLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
+                {loginLoading ? 'Masuk...' : 'Masuk'}
+              </button>
+            </div>
           </form>
         </div>
       </div>
     )
   }
 
-  // Main Page
+  // ─── MAIN PAGE ────────────────────────────────────────────────
+  const sudahMasuk = !!absensiHariIni?.waktu_masuk
+  const sudahKeluar = !!absensiHariIni?.waktu_keluar
+
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen font-jakarta" style={{ background: '#f1f5f9' }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        .font-jakarta { font-family: 'Plus Jakarta Sans', sans-serif; }
+      `}</style>
 
-      {/* Header dengan gradient */}
-      <div className="bg-gradient-to-br from-blue-600 to-indigo-800 px-5 pt-10 pb-24 relative">
-        {/* Tanggal */}
-        <p className="text-blue-200 text-xs text-center mb-1">{tanggalSekarang}</p>
+      {/* Top bar gelap */}
+      <div className="px-5 pt-8 pb-20 relative"
+        style={{ background: 'linear-gradient(160deg, #0f172a 0%, #1e3a5f 100%)' }}>
 
-        {/* Jam besar */}
-        <p className="text-white text-5xl font-bold text-center font-mono tracking-wide mb-5">
-          {jamSekarang}
-        </p>
-
-        {/* GPS status pill */}
-        <div className="flex justify-center">
-          <button
-            onClick={ambilLokasi}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold backdrop-blur transition-all active:scale-95 ${
+        {/* Tanggal + GPS */}
+        <div className="flex items-center justify-between mb-6">
+          <p className="text-slate-400 text-xs font-medium">{tanggalSekarang}</p>
+          <button onClick={ambilLokasi}
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
               lokasi
-                ? 'bg-green-400/20 text-green-200 border border-green-400/30'
-                : 'bg-red-400/20 text-red-200 border border-red-400/30'
-            }`}
-          >
-            {lokasi ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
-            {lokasi ? `GPS Aktif · ±${lokasi.akurasi}m` : 'GPS Tidak Aktif · Ketuk untuk refresh'}
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                : 'bg-red-500/10 border-red-500/30 text-red-400'
+            }`}>
+            <Navigation className="w-3 h-3" />
+            {lokasi ? `±${lokasi.akurasi}m` : 'GPS Off'}
           </button>
         </div>
+
+        {/* Jam besar */}
+        <p className="text-white font-bold text-center tracking-tight"
+          style={{ fontSize: '3.5rem', lineHeight: 1, letterSpacing: '-2px' }}>
+          {jamSekarang}
+        </p>
       </div>
 
-      {/* Content area */}
-      <div className="px-4 -mt-16 space-y-4 pb-8 max-w-sm mx-auto">
+      {/* Card utama - floating */}
+      <div className="px-4 -mt-14 space-y-3 pb-8 max-w-sm mx-auto">
 
-        {/* Kartu Identitas User */}
+        {/* Profil card */}
         <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-5 flex items-center gap-4">
-            <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center shrink-0">
-              <span className="text-white font-bold text-xl">{getInitials(session.user.name)}</span>
+          {/* Header profil */}
+          <div className="px-5 pt-5 pb-4 flex items-center gap-4"
+            style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' }}>
+            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shrink-0">
+              <span className="text-white font-bold text-lg">{getInitials(session.user.name)}</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-blue-200 uppercase tracking-wide font-semibold">{session.user.role}</p>
-              <p className="text-white font-bold text-lg truncate">{session.user.name}</p>
-              <p className="text-blue-200 text-xs truncate">{session.user.email}</p>
+              <p className="text-indigo-200 text-xs font-semibold uppercase tracking-widest">{session.user.role}</p>
+              <p className="text-white font-bold text-base truncate">{session.user.name}</p>
             </div>
           </div>
 
-          {/* Waktu Masuk & Keluar */}
-          <div className="grid grid-cols-2 divide-x divide-gray-100">
-            <div className="p-4 text-center">
-              <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-1">Datang</p>
-              <p className={`text-base font-bold ${absensiHariIni?.waktu_masuk ? 'text-green-600' : 'text-gray-300'}`}>
-                {formatJam(absensiHariIni?.waktu_masuk)}
+          {/* Jam masuk & keluar */}
+          <div className="grid grid-cols-2 divide-x divide-slate-100">
+            <div className="px-5 py-4">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-widest mb-1.5">Datang</p>
+              <p className={`text-xl font-bold ${sudahMasuk ? 'text-slate-800' : 'text-slate-200'}`}>
+                {sudahMasuk ? formatJam(absensiHariIni.waktu_masuk) : '--:--'}
               </p>
-              {absensiHariIni?.waktu_masuk && (
-                <div className="mt-1 flex items-center justify-center gap-1">
-                  <CheckCircle className="w-3 h-3 text-green-500" />
-                  <span className="text-xs text-green-500">Tercatat</span>
-                </div>
-              )}
+              {sudahMasuk && <p className="text-xs text-emerald-500 font-medium mt-1">✓ Tercatat</p>}
             </div>
-            <div className="p-4 text-center">
-              <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-1">Pulang</p>
-              <p className={`text-base font-bold ${absensiHariIni?.waktu_keluar ? 'text-blue-600' : 'text-gray-300'}`}>
-                {formatJam(absensiHariIni?.waktu_keluar)}
+            <div className="px-5 py-4">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-widest mb-1.5">Pulang</p>
+              <p className={`text-xl font-bold ${sudahKeluar ? 'text-slate-800' : 'text-slate-200'}`}>
+                {sudahKeluar ? formatJam(absensiHariIni.waktu_keluar) : '--:--'}
               </p>
-              {absensiHariIni?.waktu_keluar && (
-                <div className="mt-1 flex items-center justify-center gap-1">
-                  <CheckCircle className="w-3 h-3 text-blue-500" />
-                  <span className="text-xs text-blue-500">Tercatat</span>
-                </div>
-              )}
+              {sudahKeluar && <p className="text-xs text-blue-500 font-medium mt-1">✓ Tercatat</p>}
             </div>
           </div>
         </div>
 
-        {/* Pesan notifikasi */}
+        {/* Pesan */}
         {pesan && (
-          <div className={`rounded-2xl p-4 flex items-center gap-3 text-sm font-medium shadow-md ${
+          <div className={`rounded-2xl px-4 py-3 flex items-center gap-3 text-sm font-medium ${
             pesan.type === 'success'
-              ? 'bg-green-50 text-green-700 border border-green-200'
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
               : 'bg-red-50 text-red-700 border border-red-200'
           }`}>
             {pesan.type === 'success'
@@ -286,56 +288,63 @@ export default function AbsensiPage() {
 
         {/* Tombol Absen */}
         <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => handleAbsen('masuk')}
-            disabled={loading || !!absensiHariIni?.waktu_masuk || !lokasi}
-            className="bg-gradient-to-br from-green-500 to-emerald-600 disabled:from-gray-200 disabled:to-gray-300 disabled:text-gray-400 text-white font-bold py-5 rounded-2xl flex flex-col items-center gap-2 shadow-lg shadow-green-200 disabled:shadow-none transition-all active:scale-95 disabled:cursor-not-allowed"
-          >
+          <button onClick={() => handleAbsen('masuk')}
+            disabled={loading || sudahMasuk || !lokasi}
+            className="rounded-2xl py-5 flex flex-col items-center gap-2 font-bold text-sm transition-all active:scale-95 disabled:cursor-not-allowed shadow-lg"
+            style={{
+              background: sudahMasuk || !lokasi
+                ? '#e2e8f0'
+                : 'linear-gradient(135deg, #10b981, #059669)',
+              color: sudahMasuk || !lokasi ? '#94a3b8' : 'white',
+              boxShadow: sudahMasuk || !lokasi ? 'none' : '0 8px 24px rgba(16,185,129,0.3)'
+            }}>
             {loading ? <Loader2 className="w-7 h-7 animate-spin" /> : <LogIn className="w-7 h-7" />}
-            <span className="text-sm">Absen Masuk</span>
+            {sudahMasuk ? 'Sudah Masuk' : 'Absen Masuk'}
           </button>
-          <button
-            onClick={() => handleAbsen('keluar')}
-            disabled={loading || !absensiHariIni?.waktu_masuk || !!absensiHariIni?.waktu_keluar || !lokasi}
-            className="bg-gradient-to-br from-blue-500 to-indigo-600 disabled:from-gray-200 disabled:to-gray-300 disabled:text-gray-400 text-white font-bold py-5 rounded-2xl flex flex-col items-center gap-2 shadow-lg shadow-blue-200 disabled:shadow-none transition-all active:scale-95 disabled:cursor-not-allowed"
-          >
+
+          <button onClick={() => handleAbsen('keluar')}
+            disabled={loading || !sudahMasuk || sudahKeluar || !lokasi}
+            className="rounded-2xl py-5 flex flex-col items-center gap-2 font-bold text-sm transition-all active:scale-95 disabled:cursor-not-allowed shadow-lg"
+            style={{
+              background: !sudahMasuk || sudahKeluar || !lokasi
+                ? '#e2e8f0'
+                : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+              color: !sudahMasuk || sudahKeluar || !lokasi ? '#94a3b8' : 'white',
+              boxShadow: !sudahMasuk || sudahKeluar || !lokasi ? 'none' : '0 8px 24px rgba(99,102,241,0.3)'
+            }}>
             {loading ? <Loader2 className="w-7 h-7 animate-spin" /> : <LogOut className="w-7 h-7" />}
-            <span className="text-sm">Absen Keluar</span>
+            {sudahKeluar ? 'Sudah Keluar' : 'Absen Keluar'}
           </button>
         </div>
 
-        <p className="text-center text-xs text-gray-400 flex items-center justify-center gap-1">
+        <p className="text-center text-xs text-slate-400 flex items-center justify-center gap-1">
           <MapPin className="w-3 h-3" />
-          Absensi hanya dalam radius 20 meter dari kantor
+          Radius 20 meter dari kantor
         </p>
 
         {/* Kinerja Card */}
-        <Link
-          href="/dashboard/kinerja"
-          className="bg-white rounded-2xl shadow-md p-4 flex items-center justify-between hover:shadow-lg transition-all active:scale-95 group"
-        >
+        <Link href="/dashboard/kinerja"
+          className="bg-white rounded-2xl shadow-md p-4 flex items-center justify-between hover:shadow-lg transition-all active:scale-95 group block">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center group-hover:from-blue-200 group-hover:to-indigo-200 transition-colors">
-              <TrendingUp className="w-6 h-6 text-blue-600" />
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #ede9fe, #ddd6fe)' }}>
+              <TrendingUp className="w-5 h-5 text-violet-600" />
             </div>
             <div>
-              <p className="font-bold text-gray-900 text-sm">Kinerja Bulan Ini</p>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="font-bold text-slate-800 text-sm">Kinerja Bulan Ini</p>
+              <p className="text-xs text-slate-400 mt-0.5">
                 {kinerjaRingkasan.jumlah} sesi · {formatRupiah(kinerjaRingkasan.total)}
               </p>
             </div>
           </div>
-          <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-blue-500 transition-colors" />
+          <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-violet-500 transition-colors" />
         </Link>
 
         {/* Keluar */}
-        <button
-          onClick={() => signOut()}
-          className="w-full py-3 text-sm text-red-400 hover:text-red-600 font-medium transition-colors"
-        >
+        <button onClick={() => signOut()}
+          className="w-full py-3 text-sm text-slate-400 hover:text-red-500 font-medium transition-colors">
           Keluar dari Akun
         </button>
-
       </div>
     </div>
   )
