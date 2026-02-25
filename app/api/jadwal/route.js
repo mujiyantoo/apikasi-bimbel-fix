@@ -54,13 +54,6 @@ export async function POST(request) {
     const client = await clientPromise
     const db = client.db('bimbel_db')
 
-    const newJadwal = {
-      ...data,
-      pengajar_id: data.pengajar_id ? new ObjectId(data.pengajar_id) : null,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-
     const result = await db.collection('jadwal').insertOne(newJadwal)
     return NextResponse.json(
       { message: 'Jadwal berhasil ditambahkan', id: result.insertedId },
@@ -79,7 +72,6 @@ export async function PUT(request) {
     const client = await clientPromise
     const db = client.db('bimbel_db')
 
-    if (updateData.pengajar_id) {
       updateData.pengajar_id = new ObjectId(updateData.pengajar_id)
     }
 
