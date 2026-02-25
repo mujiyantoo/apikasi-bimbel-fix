@@ -25,10 +25,8 @@ export async function GET(request) {
       jadwal.map(async (item) => {
         let pengajar = null
         try {
-          const pengajarId = typeof item.pengajar_id === 'string'
-            ? new ObjectId(item.pengajar_id)
-            : item.pengajar_id
-          pengajar = await db.collection('pegawai').findOne({ _id: pengajarId })
+          // DIUBAH: cari by id UUID, bukan ObjectId
+          pengajar = await db.collection('pegawai').findOne({ id: item.pengajar_id })
         } catch (e) {
           console.error('Invalid pengajar_id:', item.pengajar_id)
         }
@@ -54,6 +52,14 @@ export async function POST(request) {
     const client = await clientPromise
     const db = client.db('bimbel_db')
 
+    // DIUBAH: simpan pengajar_id sebagai string UUID, bukan ObjectId
+    const newJadwal = {
+      ...data,
+      pengajar_id: data.pengajar_id,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+
     const result = await db.collection('jadwal').insertOne(newJadwal)
     return NextResponse.json(
       { message: 'Jadwal berhasil ditambahkan', id: result.insertedId },
@@ -72,9 +78,7 @@ export async function PUT(request) {
     const client = await clientPromise
     const db = client.db('bimbel_db')
 
-      updateData.pengajar_id = new ObjectId(updateData.pengajar_id)
-    }
-
+    // DIUBAH: pengajar_id tetap string UUID, tidak dikonversi
     await db.collection('jadwal').updateOne(
       { _id: new ObjectId(id) },
       { $set: { ...updateData, updatedAt: new Date() } }
