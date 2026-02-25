@@ -2,20 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, FileDown, Trash2, Edit, RefreshCw, Calendar, Clock, BookOpen, MapPin, User, ChevronDown } from 'lucide-react'
+import { Plus, FileDown, Trash2, Edit, RefreshCw, Calendar, Clock, MapPin, User, X } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 
 export default function JadwalPage() {
   const { data: session } = useSession()
-  const userRole = session?.user?.role || 'Admin'
-
   const [jadwal, setJadwal] = useState([])
   const [pegawai, setPegawai] = useState([])
   const [loading, setLoading] = useState(true)
@@ -30,7 +23,6 @@ export default function JadwalPage() {
   })
 
   const hariOptions = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
-
   const hariColors = {
     'Senin': '#6366f1', 'Selasa': '#f59e0b', 'Rabu': '#10b981',
     'Kamis': '#3b82f6', 'Jumat': '#ef4444', 'Sabtu': '#8b5cf6', 'Minggu': '#ec4899'
@@ -45,11 +37,8 @@ export default function JadwalPage() {
       const res = await fetch(`/api/jadwal?${params}`)
       const data = await res.json()
       setJadwal(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error('Error:', error)
-    } finally {
-      setLoading(false)
-    }
+    } catch (e) { console.error(e) }
+    finally { setLoading(false) }
   }
 
   const fetchPegawai = async () => {
@@ -57,33 +46,22 @@ export default function JadwalPage() {
       const res = await fetch('/api/pegawai')
       const data = await res.json()
       setPegawai(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error('Error:', error)
-    }
+    } catch (e) { console.error(e) }
   }
 
-  useEffect(() => {
-    fetchJadwal()
-    fetchPegawai()
-  }, [filterHari, filterTanggal])
+  useEffect(() => { fetchJadwal(); fetchPegawai() }, [filterHari, filterTanggal])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
       const method = editingId ? 'PUT' : 'POST'
       const body = editingId ? { ...formData, id: editingId } : formData
-      await fetch('/api/jadwal', {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      })
+      await fetch('/api/jadwal', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       setIsDialogOpen(false)
       setEditingId(null)
       resetForm()
       fetchJadwal()
-    } catch (error) {
-      console.error('Error:', error)
-    }
+    } catch (e) { console.error(e) }
   }
 
   const handleEdit = (item) => {
@@ -101,753 +79,202 @@ export default function JadwalPage() {
     try {
       await fetch(`/api/jadwal?id=${id}`, { method: 'DELETE' })
       fetchJadwal()
-    } catch (error) {
-      console.error('Error:', error)
-    }
+    } catch (e) { console.error(e) }
   }
 
-  const resetForm = () => {
-    setFormData({ hari: '', tanggal: '', kelas: '', waktu_mulai: '', waktu_selesai: '', mata_pelajaran: '', pengajar_id: '', ruangan: '' })
-  }
+  const resetForm = () => setFormData({ hari: '', tanggal: '', kelas: '', waktu_mulai: '', waktu_selesai: '', mata_pelajaran: '', pengajar_id: '', ruangan: '' })
 
   const exportToExcel = () => {
-    const dataToExport = jadwal.map(item => ({
-      'Hari': item.hari,
-      'Tanggal': new Date(item.tanggal).toLocaleDateString('id-ID'),
-      'Kelas': item.kelas,
-      'Waktu': `${item.waktu_mulai} - ${item.waktu_selesai}`,
-      'Mata Pelajaran': item.mata_pelajaran,
-      'Pengajar': item.pengajar_nama,
-      'Ruangan': item.ruangan
-    }))
-    const ws = XLSX.utils.json_to_sheet(dataToExport)
+    const ws = XLSX.utils.json_to_sheet(jadwal.map(item => ({
+      'Hari': item.hari, 'Tanggal': new Date(item.tanggal).toLocaleDateString('id-ID'),
+      'Kelas': item.kelas, 'Waktu': `${item.waktu_mulai} - ${item.waktu_selesai}`,
+      'Mata Pelajaran': item.mata_pelajaran, 'Pengajar': item.pengajar_nama, 'Ruangan': item.ruangan
+    })))
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Jadwal')
-    XLSX.writeFile(wb, `Jadwal_${filterHari !== 'all' ? filterHari : 'Semua'}_${new Date().toISOString().split('T')[0]}.xlsx`)
+    XLSX.writeFile(wb, `Jadwal_${new Date().toISOString().split('T')[0]}.xlsx`)
   }
 
   const exportToPDF = () => {
     const doc = new jsPDF()
     doc.setFontSize(16)
     doc.text('JADWAL KBM BINA INSAN NUSANTARA', 14, 15)
-    doc.setFontSize(10)
-    doc.text(`${filterHari !== 'all' ? filterHari : 'Semua Hari'} - ${filterTanggal || 'Semua Tanggal'}`, 14, 22)
     doc.autoTable({
-      startY: 28,
+      startY: 25,
       head: [['Hari', 'Tanggal', 'Kelas', 'Waktu', 'Mata Pelajaran', 'Pengajar', 'Ruangan']],
-      body: jadwal.map(item => [
-        item.hari,
-        new Date(item.tanggal).toLocaleDateString('id-ID'),
-        item.kelas,
-        `${item.waktu_mulai} - ${item.waktu_selesai}`,
-        item.mata_pelajaran,
-        item.pengajar_nama,
-        item.ruangan
-      ]),
-      theme: 'grid',
-      headStyles: { fillColor: [99, 102, 241] },
-      styles: { fontSize: 8 }
+      body: jadwal.map(item => [item.hari, new Date(item.tanggal).toLocaleDateString('id-ID'), item.kelas, `${item.waktu_mulai}-${item.waktu_selesai}`, item.mata_pelajaran, item.pengajar_nama, item.ruangan]),
+      headStyles: { fillColor: [99, 102, 241] }, styles: { fontSize: 7 }
     })
-    doc.save(`Jadwal_${filterHari !== 'all' ? filterHari : 'Semua'}_${new Date().toISOString().split('T')[0]}.pdf`)
+    doc.save(`Jadwal_${new Date().toISOString().split('T')[0]}.pdf`)
   }
+
+  const inp = {
+    padding: '10px 12px', border: '1.5px solid #e5e7eb', borderRadius: 10,
+    fontSize: 14, fontFamily: 'Plus Jakarta Sans, sans-serif', color: '#1e1b4b',
+    background: '#fafafa', outline: 'none', width: '100%', boxSizing: 'border-box'
+  }
+
+  const Field = ({ label, children }) => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</label>
+      {children}
+    </div>
+  )
 
   return (
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
-        .jadwal-root {
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          background: #f8f7ff;
-          min-height: 100vh;
-          padding: 2rem;
-        }
-
-        .jadwal-header {
-          display: flex;
-          align-items: flex-start;
-          justify-content: space-between;
-          margin-bottom: 2rem;
-          flex-wrap: wrap;
-          gap: 1rem;
-        }
-
-        .jadwal-title-block h1 {
-          font-size: 1.875rem;
-          font-weight: 800;
-          color: #1e1b4b;
-          letter-spacing: -0.03em;
-          margin: 0 0 0.25rem 0;
-        }
-
-        .jadwal-title-block p {
-          color: #6b7280;
-          font-size: 0.875rem;
-          margin: 0;
-        }
-
-        .header-actions {
-          display: flex;
-          gap: 0.625rem;
-          align-items: center;
-        }
-
-        .btn-refresh {
-          display: flex;
-          align-items: center;
-          gap: 0.375rem;
-          padding: 0.5rem 1rem;
-          border: 1.5px solid #e0e7ff;
-          background: white;
-          border-radius: 10px;
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: #6366f1;
-          cursor: pointer;
-          transition: all 0.2s;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-
-        .btn-refresh:hover {
-          background: #eef2ff;
-          border-color: #6366f1;
-        }
-
-        .btn-primary {
-          display: flex;
-          align-items: center;
-          gap: 0.375rem;
-          padding: 0.5rem 1.25rem;
-          background: linear-gradient(135deg, #6366f1, #8b5cf6);
-          border: none;
-          border-radius: 10px;
-          font-size: 0.875rem;
-          font-weight: 700;
-          color: white;
-          cursor: pointer;
-          transition: all 0.2s;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          box-shadow: 0 4px 12px rgba(99,102,241,0.3);
-        }
-
-        .btn-primary:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 6px 16px rgba(99,102,241,0.4);
-        }
-
-        .filter-card {
-          background: white;
-          border-radius: 16px;
-          padding: 1.25rem 1.5rem;
-          margin-bottom: 1.5rem;
-          border: 1px solid #ede9fe;
-          display: flex;
-          gap: 1rem;
-          flex-wrap: wrap;
-          align-items: flex-end;
-          box-shadow: 0 1px 4px rgba(99,102,241,0.06);
-        }
-
-        .filter-group {
-          display: flex;
-          flex-direction: column;
-          gap: 0.375rem;
-          flex: 1;
-          min-width: 140px;
-        }
-
-        .filter-group label {
-          font-size: 0.75rem;
-          font-weight: 700;
-          color: #6366f1;
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-        }
-
-        .filter-select, .filter-input {
-          padding: 0.5rem 0.875rem;
-          border: 1.5px solid #e0e7ff;
-          border-radius: 10px;
-          font-size: 0.875rem;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          color: #1e1b4b;
-          background: #fafafa;
-          outline: none;
-          transition: border-color 0.2s;
-        }
-
-        .filter-select:focus, .filter-input:focus {
-          border-color: #6366f1;
-          background: white;
-        }
-
-        .export-btns {
-          display: flex;
-          gap: 0.5rem;
-        }
-
-        .btn-export {
-          display: flex;
-          align-items: center;
-          gap: 0.375rem;
-          padding: 0.5rem 0.875rem;
-          border: 1.5px solid #e0e7ff;
-          background: white;
-          border-radius: 10px;
-          font-size: 0.8125rem;
-          font-weight: 600;
-          color: #6b7280;
-          cursor: pointer;
-          transition: all 0.2s;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-
-        .btn-export:hover {
-          border-color: #6366f1;
-          color: #6366f1;
-        }
-
-        .stats-row {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-          gap: 1rem;
-          margin-bottom: 1.5rem;
-        }
-
-        .stat-card {
-          background: white;
-          border-radius: 14px;
-          padding: 1rem 1.25rem;
-          border: 1px solid #ede9fe;
-          box-shadow: 0 1px 4px rgba(99,102,241,0.06);
-        }
-
-        .stat-card .stat-label {
-          font-size: 0.75rem;
-          font-weight: 600;
-          color: #9ca3af;
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-          margin-bottom: 0.25rem;
-        }
-
-        .stat-card .stat-value {
-          font-size: 1.5rem;
-          font-weight: 800;
-          color: #1e1b4b;
-        }
-
-        .table-card {
-          background: white;
-          border-radius: 16px;
-          border: 1px solid #ede9fe;
-          overflow: hidden;
-          box-shadow: 0 1px 4px rgba(99,102,241,0.06);
-        }
-
-        .table-wrapper {
-          overflow-x: auto;
-        }
-
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 0.875rem;
-        }
-
-        thead tr {
-          background: linear-gradient(135deg, #6366f1, #8b5cf6);
-        }
-
-        thead th {
-          padding: 0.875rem 1rem;
-          text-align: left;
-          font-size: 0.75rem;
-          font-weight: 700;
-          color: rgba(255,255,255,0.9);
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-          white-space: nowrap;
-        }
-
-        tbody tr {
-          border-bottom: 1px solid #f3f4f6;
-          transition: background 0.15s;
-        }
-
-        tbody tr:hover {
-          background: #fafaff;
-        }
-
-        tbody tr:last-child {
-          border-bottom: none;
-        }
-
-        tbody td {
-          padding: 0.875rem 1rem;
-          color: #374151;
-          vertical-align: middle;
-        }
-
-        .hari-badge {
-          display: inline-flex;
-          align-items: center;
-          padding: 0.25rem 0.75rem;
-          border-radius: 99px;
-          font-size: 0.75rem;
-          font-weight: 700;
-          color: white;
-        }
-
-        .cell-with-icon {
-          display: flex;
-          align-items: center;
-          gap: 0.375rem;
-          color: #6b7280;
-        }
-
-        .cell-with-icon svg {
-          flex-shrink: 0;
-          color: #a5b4fc;
-        }
-
-        .mata-pelajaran {
-          font-weight: 600;
-          color: #1e1b4b;
-        }
-
-        .kelas-badge {
-          display: inline-flex;
-          padding: 0.2rem 0.625rem;
-          background: #eef2ff;
-          color: #6366f1;
-          border-radius: 6px;
-          font-size: 0.8125rem;
-          font-weight: 700;
-        }
-
-        .action-btns {
-          display: flex;
-          gap: 0.375rem;
-        }
-
-        .btn-icon {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 32px;
-          height: 32px;
-          border-radius: 8px;
-          border: 1.5px solid #e5e7eb;
-          background: white;
-          cursor: pointer;
-          transition: all 0.2s;
-          color: #6b7280;
-        }
-
-        .btn-icon:hover.edit {
-          border-color: #6366f1;
-          color: #6366f1;
-          background: #eef2ff;
-        }
-
-        .btn-icon:hover.delete {
-          border-color: #ef4444;
-          color: #ef4444;
-          background: #fef2f2;
-        }
-
-        .empty-state {
-          padding: 4rem 2rem;
-          text-align: center;
-          color: #9ca3af;
-        }
-
-        .empty-state svg {
-          margin: 0 auto 1rem;
-          opacity: 0.3;
-        }
-
-        .empty-state p {
-          font-size: 0.9375rem;
-          font-weight: 500;
-        }
-
-        .loading-state {
-          padding: 3rem;
-          text-align: center;
-        }
-
-        .loading-dots {
-          display: flex;
-          justify-content: center;
-          gap: 0.5rem;
-        }
-
-        .loading-dots span {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: #6366f1;
-          animation: bounce 1.2s infinite;
-        }
-
-        .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
-        .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
-
-        @keyframes bounce {
-          0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-          40% { transform: scale(1); opacity: 1; }
-        }
-
-        /* Dialog override for mobile */
-        [role="dialog"] {
-          max-width: min(560px, 95vw) !important;
-          width: 95vw !important;
-          border-radius: 20px !important;
-          padding: 0 !important;
-          overflow: hidden;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-
-        .dialog-inner {
-          padding: 1.5rem;
-        }
-
-        .dialog-title-bar {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          margin-bottom: 1.5rem;
-          padding-bottom: 1rem;
-          border-bottom: 1px solid #f0edff;
-        }
-
-        .dialog-title-icon {
-          width: 36px;
-          height: 36px;
-          border-radius: 10px;
-          background: linear-gradient(135deg, #6366f1, #8b5cf6);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-        }
-
-        .dialog-title-text {
-          font-size: 1rem;
-          font-weight: 800;
-          color: #1e1b4b;
-          margin: 0;
-        }
-
-        .form-section {
-          margin-bottom: 1rem;
-        }
-
-        .form-section-title {
-          font-size: 0.6875rem;
-          font-weight: 700;
-          color: #a5b4fc;
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
-          margin-bottom: 0.625rem;
-        }
-
-        .form-row {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 0.75rem;
-        }
-
-        .form-row.single {
-          grid-template-columns: 1fr;
-        }
-
-        @media (max-width: 480px) {
-          .form-row {
-            grid-template-columns: 1fr;
-          }
-        }
-
-        .form-field {
-          display: flex;
-          flex-direction: column;
-          gap: 0.3rem;
-        }
-
-        .form-field label {
-          font-size: 0.75rem;
-          font-weight: 700;
-          color: #6b7280;
-        }
-
-        .form-field input {
-          padding: 0.625rem 0.875rem;
-          border: 1.5px solid #e5e7eb;
-          border-radius: 10px;
-          font-size: 0.875rem;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          color: #1e1b4b;
-          outline: none;
-          transition: all 0.2s;
-          background: #fafafa;
-          width: 100%;
-          box-sizing: border-box;
-        }
-
-        .form-field input:focus {
-          border-color: #6366f1;
-          background: white;
-          box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
-        }
-
-        .form-actions {
-          display: flex;
-          justify-content: flex-end;
-          gap: 0.625rem;
-          margin-top: 1.25rem;
-          padding-top: 1rem;
-          border-top: 1px solid #f0edff;
-        }
-
-        .btn-cancel {
-          padding: 0.625rem 1.25rem;
-          border: 1.5px solid #e5e7eb;
-          background: white;
-          border-radius: 10px;
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: #6b7280;
-          cursor: pointer;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          transition: all 0.2s;
-        }
-
-        .btn-cancel:hover {
-          border-color: #d1d5db;
-          background: #f9fafb;
-        }
+        .jr * { box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .jr { background: #f5f3ff; min-height: 100vh; padding: 1rem; }
+
+        .jh { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.625rem; }
+        .jh h1 { font-size:1.375rem; font-weight:800; color:#1e1b4b; margin:0 0 2px; letter-spacing:-0.02em; }
+        .jh p { color:#9ca3af; font-size:12px; margin:0; }
+        .ha { display:flex; gap:6px; align-items:center; }
+
+        .btn-r { display:flex; align-items:center; gap:5px; padding:8px 12px; border:1.5px solid #e0e7ff; background:white; border-radius:10px; font-size:12px; font-weight:600; color:#6366f1; cursor:pointer; transition:all 0.2s; }
+        .btn-r:hover { background:#eef2ff; }
+        .btn-p { display:flex; align-items:center; gap:5px; padding:8px 14px; background:linear-gradient(135deg,#6366f1,#8b5cf6); border:none; border-radius:10px; font-size:12px; font-weight:700; color:white; cursor:pointer; box-shadow:0 4px 10px rgba(99,102,241,0.3); transition:all 0.2s; }
+        .btn-p:hover { transform:translateY(-1px); }
+
+        .stats { display:grid; grid-template-columns:repeat(2,1fr); gap:0.625rem; margin-bottom:1rem; }
+        @media(min-width:480px){ .stats{grid-template-columns:repeat(4,1fr)} }
+        .sc { background:white; border-radius:12px; padding:12px 14px; border:1px solid #ede9fe; }
+        .sc-l { font-size:10px; font-weight:700; color:#a5b4fc; text-transform:uppercase; letter-spacing:.06em; margin-bottom:2px; }
+        .sc-v { font-size:1.5rem; font-weight:800; color:#1e1b4b; }
+
+        .fc { background:white; border-radius:12px; padding:12px; margin-bottom:1rem; border:1px solid #ede9fe; display:flex; gap:0.625rem; flex-wrap:wrap; align-items:flex-end; }
+        .fg { display:flex; flex-direction:column; gap:3px; flex:1; min-width:110px; }
+        .fg label { font-size:10px; font-weight:700; color:#6366f1; text-transform:uppercase; letter-spacing:.06em; }
+        .fs,.fi { padding:8px 10px; border:1.5px solid #e0e7ff; border-radius:9px; font-size:13px; color:#1e1b4b; background:#fafafa; outline:none; width:100%; }
+        .eb { display:flex; gap:6px; }
+        .be { display:flex; align-items:center; gap:4px; padding:8px 10px; border:1.5px solid #e0e7ff; background:white; border-radius:9px; font-size:12px; font-weight:600; color:#6b7280; cursor:pointer; transition:all 0.2s; }
+        .be:hover { border-color:#6366f1; color:#6366f1; }
+
+        .tc { background:white; border-radius:14px; border:1px solid #ede9fe; overflow:hidden; }
+        .tw { overflow-x:auto; }
+        table { width:100%; border-collapse:collapse; font-size:12px; }
+        thead tr { background:linear-gradient(135deg,#6366f1,#8b5cf6); }
+        thead th { padding:10px 11px; text-align:left; font-size:10px; font-weight:700; color:rgba(255,255,255,.9); text-transform:uppercase; letter-spacing:.06em; white-space:nowrap; }
+        tbody tr { border-bottom:1px solid #f3f4f6; transition:background .15s; }
+        tbody tr:hover { background:#fafaff; }
+        tbody tr:last-child { border-bottom:none; }
+        tbody td { padding:10px 11px; color:#374151; vertical-align:middle; }
+        .hb { display:inline-flex; padding:3px 9px; border-radius:99px; font-size:10px; font-weight:700; color:white; }
+        .ci { display:flex; align-items:center; gap:3px; color:#6b7280; white-space:nowrap; }
+        .ci svg { color:#a5b4fc; flex-shrink:0; }
+        .mp { font-weight:600; color:#1e1b4b; }
+        .kb { display:inline-flex; padding:2px 7px; background:#eef2ff; color:#6366f1; border-radius:6px; font-size:11px; font-weight:700; }
+        .ab { display:flex; gap:3px; }
+        .bi { display:flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:7px; border:1.5px solid #e5e7eb; background:white; cursor:pointer; color:#6b7280; transition:all 0.2s; }
+        .bi.ed:hover { border-color:#6366f1; color:#6366f1; background:#eef2ff; }
+        .bi.dl:hover { border-color:#ef4444; color:#ef4444; background:#fef2f2; }
+        .es { padding:2.5rem 1rem; text-align:center; color:#9ca3af; }
+        .es svg { margin:0 auto .625rem; opacity:.25; display:block; }
+        .ls { padding:2rem; text-align:center; }
+        .ld { display:flex; justify-content:center; gap:6px; }
+        .ld span { width:7px; height:7px; border-radius:50%; background:#6366f1; animation:bou 1.2s infinite; }
+        .ld span:nth-child(2){animation-delay:.2s}.ld span:nth-child(3){animation-delay:.4s}
+        @keyframes bou{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
+
+        /* MODAL */
+        .mo { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; display:flex; align-items:flex-end; justify-content:center; animation:fI .2s; }
+        @media(min-width:520px){ .mo{align-items:center;padding:1rem} }
+        @keyframes fI{from{opacity:0}to{opacity:1}}
+        .mb { background:white; width:100%; max-width:460px; border-radius:20px 20px 0 0; max-height:90vh; display:flex; flex-direction:column; animation:sU .25s ease; overflow:hidden; }
+        @media(min-width:520px){ .mb{border-radius:18px;max-height:85vh} }
+        @keyframes sU{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
+        .mh { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid #f0edff; flex-shrink:0; }
+        .mhl { display:flex; align-items:center; gap:9px; }
+        .mi { width:32px; height:32px; border-radius:9px; background:linear-gradient(135deg,#6366f1,#8b5cf6); display:flex; align-items:center; justify-content:center; }
+        .mt { font-size:14px; font-weight:800; color:#1e1b4b; margin:0; }
+        .mx { width:28px; height:28px; border-radius:7px; border:1.5px solid #e5e7eb; background:white; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#9ca3af; transition:all .2s; }
+        .mx:hover { background:#fef2f2; border-color:#ef4444; color:#ef4444; }
+        .mbody { overflow-y:auto; padding:14px 16px; flex:1; -webkit-overflow-scrolling:touch; }
+        .st { font-size:10px; font-weight:700; color:#a5b4fc; text-transform:uppercase; letter-spacing:.08em; margin:0 0 8px; padding-bottom:5px; border-bottom:1px dashed #ede9fe; }
+        .fsec { margin-bottom:12px; }
+        .f2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+        .f1 { display:grid; grid-template-columns:1fr; gap:8px; }
+        .mf { padding:12px 16px; border-top:1px solid #f0edff; display:flex; gap:8px; justify-content:flex-end; flex-shrink:0; background:white; }
+        .bc { padding:9px 16px; border:1.5px solid #e5e7eb; background:white; border-radius:10px; font-size:13px; font-weight:600; color:#6b7280; cursor:pointer; transition:all .2s; }
+        .bc:hover { background:#f9fafb; }
+        .bs { padding:9px 20px; background:linear-gradient(135deg,#6366f1,#8b5cf6); border:none; border-radius:10px; font-size:13px; font-weight:700; color:white; cursor:pointer; box-shadow:0 4px 10px rgba(99,102,241,.3); transition:all .2s; }
+        .bs:hover { transform:translateY(-1px); }
+        input:focus, select:focus { border-color:#6366f1 !important; box-shadow:0 0 0 3px rgba(99,102,241,.1) !important; outline:none; background:white !important; }
       `}</style>
 
-      <div className="jadwal-root">
+      <div className="jr">
         {/* Header */}
-        <div className="jadwal-header">
-          <div className="jadwal-title-block">
+        <div className="jh">
+          <div>
             <h1>Jadwal Mengajar</h1>
-            <p>Kelola jadwal mengajar pengajar Bina Insan Nusantara</p>
+            <p>Kelola jadwal mengajar Bina Insan Nusantara</p>
           </div>
-          <div className="header-actions">
-            <button className="btn-refresh" onClick={fetchJadwal}>
-              <RefreshCw size={14} /> Refresh
+          <div className="ha">
+            <button className="btn-r" onClick={fetchJadwal}><RefreshCw size={12}/> Refresh</button>
+            <button className="btn-p" onClick={() => { resetForm(); setEditingId(null); setIsDialogOpen(true) }}>
+              <Plus size={13}/> Tambah Jadwal
             </button>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <button className="btn-primary" onClick={() => { resetForm(); setEditingId(null); }}>
-                  <Plus size={15} /> Tambah Jadwal
-                </button>
-              </DialogTrigger>
-              <DialogContent className="max-w-lg">
-                <div className="dialog-inner">
-                  <div className="dialog-title-bar">
-                    <div className="dialog-title-icon">
-                      <Calendar size={16} color="white" />
-                    </div>
-                    <p className="dialog-title-text">{editingId ? 'Edit Jadwal' : 'Tambah Jadwal Baru'}</p>
-                  </div>
-
-                  <form onSubmit={handleSubmit}>
-                    {/* Waktu & Hari */}
-                    <div className="form-section">
-                      <div className="form-section-title">📅 Waktu & Hari</div>
-                      <div className="form-row">
-                        <div className="form-field">
-                          <label>Hari *</label>
-                          <Select value={formData.hari} onValueChange={(v) => setFormData({...formData, hari: v})} required>
-                            <SelectTrigger style={{ borderRadius: 10, fontSize: '0.875rem', height: 42, fontFamily: 'Plus Jakarta Sans' }}>
-                              <SelectValue placeholder="Pilih Hari" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {hariOptions.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="form-field">
-                          <label>Tanggal *</label>
-                          <input type="date" value={formData.tanggal} onChange={(e) => setFormData({...formData, tanggal: e.target.value})} required />
-                        </div>
-                        <div className="form-field">
-                          <label>Waktu Mulai *</label>
-                          <input type="time" value={formData.waktu_mulai} onChange={(e) => setFormData({...formData, waktu_mulai: e.target.value})} required />
-                        </div>
-                        <div className="form-field">
-                          <label>Waktu Selesai *</label>
-                          <input type="time" value={formData.waktu_selesai} onChange={(e) => setFormData({...formData, waktu_selesai: e.target.value})} required />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Info Kelas */}
-                    <div className="form-section">
-                      <div className="form-section-title">📚 Info Kelas</div>
-                      <div className="form-row">
-                        <div className="form-field">
-                          <label>Kelas *</label>
-                          <input value={formData.kelas} onChange={(e) => setFormData({...formData, kelas: e.target.value})} required placeholder="Contoh: 7A" />
-                        </div>
-                        <div className="form-field">
-                          <label>Mata Pelajaran *</label>
-                          <input value={formData.mata_pelajaran} onChange={(e) => setFormData({...formData, mata_pelajaran: e.target.value})} required placeholder="Contoh: Matematika" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Pengajar & Ruangan */}
-                    <div className="form-section">
-                      <div className="form-section-title">👨‍🏫 Pengajar & Lokasi</div>
-                      <div className="form-row single">
-                        <div className="form-field">
-                          <label>Pengajar *</label>
-                          <Select value={formData.pengajar_id} onValueChange={(v) => setFormData({...formData, pengajar_id: v})} required>
-                            <SelectTrigger style={{ borderRadius: 10, fontSize: '0.875rem', height: 42, fontFamily: 'Plus Jakarta Sans' }}>
-                              <SelectValue placeholder="Pilih Pengajar" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {pegawai.map(p => <SelectItem key={p.id} value={p.id}>{p.nama}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="form-field">
-                          <label>Ruangan *</label>
-                          <input value={formData.ruangan} onChange={(e) => setFormData({...formData, ruangan: e.target.value})} required placeholder="Contoh: Ruang A1" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="form-actions">
-                      <button type="button" className="btn-cancel" onClick={() => setIsDialogOpen(false)}>Batal</button>
-                      <button type="submit" className="btn-primary">{editingId ? '✓ Update' : '+ Simpan'}</button>
-                    </div>
-                  </form>
-                </div>
-              </DialogContent>
-            </Dialog>
           </div>
         </div>
 
         {/* Stats */}
-        <div className="stats-row">
-          <div className="stat-card">
-            <div className="stat-label">Total Jadwal</div>
-            <div className="stat-value">{jadwal.length}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Pengajar Aktif</div>
-            <div className="stat-value">{[...new Set(jadwal.map(j => j.pengajar_id))].length}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Jumlah Kelas</div>
-            <div className="stat-value">{[...new Set(jadwal.map(j => j.kelas))].length}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Mata Pelajaran</div>
-            <div className="stat-value">{[...new Set(jadwal.map(j => j.mata_pelajaran))].length}</div>
-          </div>
+        <div className="stats">
+          <div className="sc"><div className="sc-l">Total Jadwal</div><div className="sc-v">{jadwal.length}</div></div>
+          <div className="sc"><div className="sc-l">Pengajar</div><div className="sc-v">{[...new Set(jadwal.map(j=>j.pengajar_id))].length}</div></div>
+          <div className="sc"><div className="sc-l">Kelas</div><div className="sc-v">{[...new Set(jadwal.map(j=>j.kelas))].length}</div></div>
+          <div className="sc"><div className="sc-l">Mapel</div><div className="sc-v">{[...new Set(jadwal.map(j=>j.mata_pelajaran))].length}</div></div>
         </div>
 
         {/* Filter */}
-        <div className="filter-card">
-          <div className="filter-group">
+        <div className="fc">
+          <div className="fg">
             <label>Filter Hari</label>
-            <select className="filter-select" value={filterHari} onChange={(e) => setFilterHari(e.target.value)}>
+            <select className="fs" value={filterHari} onChange={(e)=>setFilterHari(e.target.value)}>
               <option value="all">Semua Hari</option>
-              {hariOptions.map(h => <option key={h} value={h}>{h}</option>)}
+              {hariOptions.map(h=><option key={h} value={h}>{h}</option>)}
             </select>
           </div>
-          <div className="filter-group">
+          <div className="fg">
             <label>Filter Tanggal</label>
-            <input className="filter-input" type="date" value={filterTanggal} onChange={(e) => setFilterTanggal(e.target.value)} />
+            <input className="fi" type="date" value={filterTanggal} onChange={(e)=>setFilterTanggal(e.target.value)}/>
           </div>
-          <div className="export-btns">
-            <button className="btn-export" onClick={exportToExcel}>
-              <FileDown size={14} /> Excel
-            </button>
-            <button className="btn-export" onClick={exportToPDF}>
-              <FileDown size={14} /> PDF
-            </button>
+          <div className="eb">
+            <button className="be" onClick={exportToExcel}><FileDown size={12}/> Excel</button>
+            <button className="be" onClick={exportToPDF}><FileDown size={12}/> PDF</button>
           </div>
         </div>
 
         {/* Table */}
-        <div className="table-card">
-          <div className="table-wrapper">
+        <div className="tc">
+          <div className="tw">
             {loading ? (
-              <div className="loading-state">
-                <div className="loading-dots">
-                  <span /><span /><span />
-                </div>
-              </div>
+              <div className="ls"><div className="ld"><span/><span/><span/></div></div>
             ) : jadwal.length === 0 ? (
-              <div className="empty-state">
-                <Calendar size={48} />
-                <p>Belum ada jadwal tersedia</p>
-              </div>
+              <div className="es"><Calendar size={40}/><p>Belum ada jadwal tersedia</p></div>
             ) : (
               <table>
                 <thead>
                   <tr>
-                    <th>Hari</th>
-                    <th>Tanggal</th>
-                    <th>Kelas</th>
-                    <th>Waktu</th>
-                    <th>Mata Pelajaran</th>
-                    <th>Pengajar</th>
-                    <th>Ruangan</th>
-                    <th>Aksi</th>
+                    <th>Hari</th><th>Tanggal</th><th>Kelas</th><th>Waktu</th>
+                    <th>Mata Pelajaran</th><th>Pengajar</th><th>Ruangan</th><th>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {jadwal.map((item) => (
+                  {jadwal.map((item)=>(
                     <tr key={item.id}>
+                      <td><span className="hb" style={{background:hariColors[item.hari]||'#6b7280'}}>{item.hari}</span></td>
+                      <td><div className="ci"><Calendar size={11}/>{new Date(item.tanggal).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})}</div></td>
+                      <td><span className="kb">{item.kelas}</span></td>
+                      <td><div className="ci"><Clock size={11}/>{item.waktu_mulai}–{item.waktu_selesai}</div></td>
+                      <td><span className="mp">{item.mata_pelajaran}</span></td>
+                      <td><div className="ci"><User size={11}/>{item.pengajar_nama}</div></td>
+                      <td><div className="ci"><MapPin size={11}/>{item.ruangan}</div></td>
                       <td>
-                        <span className="hari-badge" style={{ background: hariColors[item.hari] || '#6b7280' }}>
-                          {item.hari}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="cell-with-icon">
-                          <Calendar size={13} />
-                          {new Date(item.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </div>
-                      </td>
-                      <td><span className="kelas-badge">{item.kelas}</span></td>
-                      <td>
-                        <div className="cell-with-icon">
-                          <Clock size={13} />
-                          {item.waktu_mulai} – {item.waktu_selesai}
-                        </div>
-                      </td>
-                      <td><span className="mata-pelajaran">{item.mata_pelajaran}</span></td>
-                      <td>
-                        <div className="cell-with-icon">
-                          <User size={13} />
-                          {item.pengajar_nama}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="cell-with-icon">
-                          <MapPin size={13} />
-                          {item.ruangan}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="action-btns">
-                          <button className="btn-icon edit" onClick={() => handleEdit(item)}>
-                            <Edit size={13} />
-                          </button>
-                          <button className="btn-icon delete" onClick={() => handleDelete(item.id)}>
-                            <Trash2 size={13} />
-                          </button>
+                        <div className="ab">
+                          <button className="bi ed" onClick={()=>handleEdit(item)}><Edit size={11}/></button>
+                          <button className="bi dl" onClick={()=>handleDelete(item.id)}><Trash2 size={11}/></button>
                         </div>
                       </td>
                     </tr>
@@ -858,6 +285,84 @@ export default function JadwalPage() {
           </div>
         </div>
       </div>
+
+      {/* MODAL CUSTOM — selalu bisa scroll, tombol selalu kelihatan */}
+      {isDialogOpen && (
+        <div className="mo" onClick={(e)=>{if(e.target===e.currentTarget)setIsDialogOpen(false)}}>
+          <div className="mb">
+            {/* Header modal */}
+            <div className="mh">
+              <div className="mhl">
+                <div className="mi"><Calendar size={14} color="white"/></div>
+                <p className="mt">{editingId ? 'Edit Jadwal' : 'Tambah Jadwal Baru'}</p>
+              </div>
+              <button className="mx" onClick={()=>setIsDialogOpen(false)}><X size={13}/></button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} style={{display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
+              {/* Body — bisa scroll */}
+              <div className="mbody">
+
+                <div className="fsec">
+                  <p className="st">📅 Waktu & Hari</p>
+                  <div className="f2">
+                    <Field label="Hari *">
+                      <select style={inp} value={formData.hari} onChange={(e)=>setFormData({...formData,hari:e.target.value})} required>
+                        <option value="">Pilih Hari</option>
+                        {hariOptions.map(h=><option key={h} value={h}>{h}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Tanggal *">
+                      <input style={inp} type="date" value={formData.tanggal} onChange={(e)=>setFormData({...formData,tanggal:e.target.value})} required/>
+                    </Field>
+                    <Field label="Waktu Mulai *">
+                      <input style={inp} type="time" value={formData.waktu_mulai} onChange={(e)=>setFormData({...formData,waktu_mulai:e.target.value})} required/>
+                    </Field>
+                    <Field label="Waktu Selesai *">
+                      <input style={inp} type="time" value={formData.waktu_selesai} onChange={(e)=>setFormData({...formData,waktu_selesai:e.target.value})} required/>
+                    </Field>
+                  </div>
+                </div>
+
+                <div className="fsec">
+                  <p className="st">📚 Info Kelas</p>
+                  <div className="f2">
+                    <Field label="Kelas *">
+                      <input style={inp} value={formData.kelas} onChange={(e)=>setFormData({...formData,kelas:e.target.value})} required placeholder="Contoh: 7A"/>
+                    </Field>
+                    <Field label="Mata Pelajaran *">
+                      <input style={inp} value={formData.mata_pelajaran} onChange={(e)=>setFormData({...formData,mata_pelajaran:e.target.value})} required placeholder="Matematika"/>
+                    </Field>
+                  </div>
+                </div>
+
+                <div className="fsec">
+                  <p className="st">👨‍🏫 Pengajar & Lokasi</p>
+                  <div className="f1">
+                    <Field label="Pengajar *">
+                      <select style={inp} value={formData.pengajar_id} onChange={(e)=>setFormData({...formData,pengajar_id:e.target.value})} required>
+                        <option value="">Pilih Pengajar</option>
+                        {pegawai.map(p=><option key={p.id} value={p.id}>{p.nama}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Ruangan *">
+                      <input style={inp} value={formData.ruangan} onChange={(e)=>setFormData({...formData,ruangan:e.target.value})} required placeholder="Contoh: Ruang A1"/>
+                    </Field>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Footer — SELALU kelihatan di bagian bawah */}
+              <div className="mf">
+                <button type="button" className="bc" onClick={()=>setIsDialogOpen(false)}>Batal</button>
+                <button type="submit" className="bs">{editingId ? '✓ Update' : '+ Simpan'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   )
 }
