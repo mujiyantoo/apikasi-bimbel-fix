@@ -9,7 +9,6 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const hari = searchParams.get('hari')
     const tanggal = searchParams.get('tanggal')
-
     const client = await clientPromise
     const db = client.db('bimbel_db')
 
@@ -26,16 +25,13 @@ export async function GET(request) {
       jadwal.map(async (item) => {
         let pengajar = null
         try {
-          // Tangani pengajar_id baik berupa string maupun ObjectId
           const pengajarId = typeof item.pengajar_id === 'string'
             ? new ObjectId(item.pengajar_id)
             : item.pengajar_id
-
           pengajar = await db.collection('pegawai').findOne({ _id: pengajarId })
         } catch (e) {
           console.error('Invalid pengajar_id:', item.pengajar_id)
         }
-
         return {
           ...item,
           id: item._id.toString(),
@@ -58,42 +54,9 @@ export async function POST(request) {
     const client = await clientPromise
     const db = client.db('bimbel_db')
 
-    // Simpan pengajar_id sebagai ObjectId agar konsisten
-    export async function POST(request) {
-  try {
-    const data = await request.json()
-    const client = await clientPromise
-    const db = client.db('bimbel_db')
-
     const newJadwal = {
       ...data,
       pengajar_id: data.pengajar_id ? new ObjectId(data.pengajar_id) : null,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-
-    const result = await db.collection('jadwal').insertOne(newJadwal)
-    return NextResponse.json(
-      { message: 'Jadwal berhasil ditambahkan', id: result.insertedId },
-      { status: 201 }
-    )
-  } catch (error) {
-    console.error('Error creating jadwal:', error)
-    return NextResponse.json({ error: 'Gagal menambahkan jadwal' }, { status: 500 })
-  }
-}
-  try {
-    const data = await request.json()
-    const client = await clientPromise
-    const db = client.db('bimbel_db')
-
-    const newJadwal = {
-      ...data,
-      pengajar_id: data.pengajar_id ? new ObjectId(data.pengajar_id) : null, // ← UBAH DI SINI
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-      pengajar_id: new ObjectId(data.pengajar_id),
       createdAt: new Date(),
       updatedAt: new Date()
     }
@@ -116,7 +79,6 @@ export async function PUT(request) {
     const client = await clientPromise
     const db = client.db('bimbel_db')
 
-    // Pastikan pengajar_id juga disimpan sebagai ObjectId saat update
     if (updateData.pengajar_id) {
       updateData.pengajar_id = new ObjectId(updateData.pengajar_id)
     }
@@ -141,7 +103,6 @@ export async function DELETE(request) {
     const db = client.db('bimbel_db')
 
     await db.collection('jadwal').deleteOne({ _id: new ObjectId(id) })
-
     return NextResponse.json({ message: 'Jadwal berhasil dihapus' })
   } catch (error) {
     console.error('Error deleting jadwal:', error)
