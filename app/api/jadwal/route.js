@@ -59,9 +59,29 @@ export async function POST(request) {
     const db = client.db('bimbel_db')
 
     // Simpan pengajar_id sebagai ObjectId agar konsisten
+    export async function POST(request) {
+  try {
+    const data = await request.json()
+    const client = await clientPromise
+    const db = client.db('bimbel_db')
+
     const newJadwal = {
       ...data,
-      export async function POST(request) {
+      pengajar_id: data.pengajar_id ? new ObjectId(data.pengajar_id) : null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+
+    const result = await db.collection('jadwal').insertOne(newJadwal)
+    return NextResponse.json(
+      { message: 'Jadwal berhasil ditambahkan', id: result.insertedId },
+      { status: 201 }
+    )
+  } catch (error) {
+    console.error('Error creating jadwal:', error)
+    return NextResponse.json({ error: 'Gagal menambahkan jadwal' }, { status: 500 })
+  }
+}
   try {
     const data = await request.json()
     const client = await clientPromise
