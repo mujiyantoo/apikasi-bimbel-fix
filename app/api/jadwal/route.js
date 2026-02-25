@@ -61,6 +61,18 @@ export async function POST(request) {
     // Simpan pengajar_id sebagai ObjectId agar konsisten
     const newJadwal = {
       ...data,
+      export async function POST(request) {
+  try {
+    const data = await request.json()
+    const client = await clientPromise
+    const db = client.db('bimbel_db')
+
+    const newJadwal = {
+      ...data,
+      pengajar_id: data.pengajar_id ? new ObjectId(data.pengajar_id) : null, // ← UBAH DI SINI
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
       pengajar_id: new ObjectId(data.pengajar_id),
       createdAt: new Date(),
       updatedAt: new Date()
