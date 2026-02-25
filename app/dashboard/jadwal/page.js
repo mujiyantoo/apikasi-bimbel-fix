@@ -500,53 +500,119 @@ export default function JadwalPage() {
           40% { transform: scale(1); opacity: 1; }
         }
 
-        /* Dialog form styles */
-        .form-grid {
+        /* Dialog override for mobile */
+        [role="dialog"] {
+          max-width: min(560px, 95vw) !important;
+          width: 95vw !important;
+          border-radius: 20px !important;
+          padding: 0 !important;
+          overflow: hidden;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .dialog-inner {
+          padding: 1.5rem;
+        }
+
+        .dialog-title-bar {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          margin-bottom: 1.5rem;
+          padding-bottom: 1rem;
+          border-bottom: 1px solid #f0edff;
+        }
+
+        .dialog-title-icon {
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
+          background: linear-gradient(135deg, #6366f1, #8b5cf6);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .dialog-title-text {
+          font-size: 1rem;
+          font-weight: 800;
+          color: #1e1b4b;
+          margin: 0;
+        }
+
+        .form-section {
+          margin-bottom: 1rem;
+        }
+
+        .form-section-title {
+          font-size: 0.6875rem;
+          font-weight: 700;
+          color: #a5b4fc;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          margin-bottom: 0.625rem;
+        }
+
+        .form-row {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 1rem;
+          gap: 0.75rem;
+        }
+
+        .form-row.single {
+          grid-template-columns: 1fr;
+        }
+
+        @media (max-width: 480px) {
+          .form-row {
+            grid-template-columns: 1fr;
+          }
         }
 
         .form-field {
           display: flex;
           flex-direction: column;
-          gap: 0.375rem;
-        }
-
-        .form-field.full {
-          grid-column: span 2;
+          gap: 0.3rem;
         }
 
         .form-field label {
-          font-size: 0.8125rem;
-          font-weight: 600;
-          color: #374151;
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: #6b7280;
         }
 
-        .form-field input, .form-field select {
-          padding: 0.5rem 0.875rem;
+        .form-field input {
+          padding: 0.625rem 0.875rem;
           border: 1.5px solid #e5e7eb;
           border-radius: 10px;
           font-size: 0.875rem;
           font-family: 'Plus Jakarta Sans', sans-serif;
           color: #1e1b4b;
           outline: none;
-          transition: border-color 0.2s;
+          transition: all 0.2s;
+          background: #fafafa;
+          width: 100%;
+          box-sizing: border-box;
         }
 
-        .form-field input:focus, .form-field select:focus {
+        .form-field input:focus {
           border-color: #6366f1;
+          background: white;
+          box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
         }
 
         .form-actions {
           display: flex;
           justify-content: flex-end;
           gap: 0.625rem;
-          margin-top: 1rem;
+          margin-top: 1.25rem;
+          padding-top: 1rem;
+          border-top: 1px solid #f0edff;
         }
 
         .btn-cancel {
-          padding: 0.5rem 1.25rem;
+          padding: 0.625rem 1.25rem;
           border: 1.5px solid #e5e7eb;
           background: white;
           border-radius: 10px;
@@ -581,62 +647,89 @@ export default function JadwalPage() {
                   <Plus size={15} /> Tambah Jadwal
                 </button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 800, color: '#1e1b4b' }}>
-                    {editingId ? 'Edit Jadwal' : 'Tambah Jadwal Baru'}
-                  </DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSubmit}>
-                  <div className="form-grid">
-                    <div className="form-field">
-                      <label>Hari *</label>
-                      <Select value={formData.hari} onValueChange={(v) => setFormData({...formData, hari: v})} required>
-                        <SelectTrigger><SelectValue placeholder="Pilih Hari" /></SelectTrigger>
-                        <SelectContent>
-                          {hariOptions.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+              <DialogContent className="max-w-lg">
+                <div className="dialog-inner">
+                  <div className="dialog-title-bar">
+                    <div className="dialog-title-icon">
+                      <Calendar size={16} color="white" />
                     </div>
-                    <div className="form-field">
-                      <label>Tanggal *</label>
-                      <input type="date" value={formData.tanggal} onChange={(e) => setFormData({...formData, tanggal: e.target.value})} required />
-                    </div>
-                    <div className="form-field">
-                      <label>Kelas *</label>
-                      <input value={formData.kelas} onChange={(e) => setFormData({...formData, kelas: e.target.value})} required placeholder="Contoh: 7A" />
-                    </div>
-                    <div className="form-field">
-                      <label>Mata Pelajaran *</label>
-                      <input value={formData.mata_pelajaran} onChange={(e) => setFormData({...formData, mata_pelajaran: e.target.value})} required placeholder="Contoh: Matematika" />
-                    </div>
-                    <div className="form-field">
-                      <label>Waktu Mulai *</label>
-                      <input type="time" value={formData.waktu_mulai} onChange={(e) => setFormData({...formData, waktu_mulai: e.target.value})} required />
-                    </div>
-                    <div className="form-field">
-                      <label>Waktu Selesai *</label>
-                      <input type="time" value={formData.waktu_selesai} onChange={(e) => setFormData({...formData, waktu_selesai: e.target.value})} required />
-                    </div>
-                    <div className="form-field full">
-                      <label>Pengajar *</label>
-                      <Select value={formData.pengajar_id} onValueChange={(v) => setFormData({...formData, pengajar_id: v})} required>
-                        <SelectTrigger><SelectValue placeholder="Pilih Pengajar" /></SelectTrigger>
-                        <SelectContent>
-                          {pegawai.map(p => <SelectItem key={p.id} value={p.id}>{p.nama}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="form-field full">
-                      <label>Ruangan *</label>
-                      <input value={formData.ruangan} onChange={(e) => setFormData({...formData, ruangan: e.target.value})} required placeholder="Contoh: Ruang A1" />
-                    </div>
+                    <p className="dialog-title-text">{editingId ? 'Edit Jadwal' : 'Tambah Jadwal Baru'}</p>
                   </div>
-                  <div className="form-actions">
-                    <button type="button" className="btn-cancel" onClick={() => setIsDialogOpen(false)}>Batal</button>
-                    <button type="submit" className="btn-primary">{editingId ? 'Update' : 'Simpan'}</button>
-                  </div>
-                </form>
+
+                  <form onSubmit={handleSubmit}>
+                    {/* Waktu & Hari */}
+                    <div className="form-section">
+                      <div className="form-section-title">📅 Waktu & Hari</div>
+                      <div className="form-row">
+                        <div className="form-field">
+                          <label>Hari *</label>
+                          <Select value={formData.hari} onValueChange={(v) => setFormData({...formData, hari: v})} required>
+                            <SelectTrigger style={{ borderRadius: 10, fontSize: '0.875rem', height: 42, fontFamily: 'Plus Jakarta Sans' }}>
+                              <SelectValue placeholder="Pilih Hari" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {hariOptions.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="form-field">
+                          <label>Tanggal *</label>
+                          <input type="date" value={formData.tanggal} onChange={(e) => setFormData({...formData, tanggal: e.target.value})} required />
+                        </div>
+                        <div className="form-field">
+                          <label>Waktu Mulai *</label>
+                          <input type="time" value={formData.waktu_mulai} onChange={(e) => setFormData({...formData, waktu_mulai: e.target.value})} required />
+                        </div>
+                        <div className="form-field">
+                          <label>Waktu Selesai *</label>
+                          <input type="time" value={formData.waktu_selesai} onChange={(e) => setFormData({...formData, waktu_selesai: e.target.value})} required />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Info Kelas */}
+                    <div className="form-section">
+                      <div className="form-section-title">📚 Info Kelas</div>
+                      <div className="form-row">
+                        <div className="form-field">
+                          <label>Kelas *</label>
+                          <input value={formData.kelas} onChange={(e) => setFormData({...formData, kelas: e.target.value})} required placeholder="Contoh: 7A" />
+                        </div>
+                        <div className="form-field">
+                          <label>Mata Pelajaran *</label>
+                          <input value={formData.mata_pelajaran} onChange={(e) => setFormData({...formData, mata_pelajaran: e.target.value})} required placeholder="Contoh: Matematika" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Pengajar & Ruangan */}
+                    <div className="form-section">
+                      <div className="form-section-title">👨‍🏫 Pengajar & Lokasi</div>
+                      <div className="form-row single">
+                        <div className="form-field">
+                          <label>Pengajar *</label>
+                          <Select value={formData.pengajar_id} onValueChange={(v) => setFormData({...formData, pengajar_id: v})} required>
+                            <SelectTrigger style={{ borderRadius: 10, fontSize: '0.875rem', height: 42, fontFamily: 'Plus Jakarta Sans' }}>
+                              <SelectValue placeholder="Pilih Pengajar" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {pegawai.map(p => <SelectItem key={p.id} value={p.id}>{p.nama}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="form-field">
+                          <label>Ruangan *</label>
+                          <input value={formData.ruangan} onChange={(e) => setFormData({...formData, ruangan: e.target.value})} required placeholder="Contoh: Ruang A1" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="form-actions">
+                      <button type="button" className="btn-cancel" onClick={() => setIsDialogOpen(false)}>Batal</button>
+                      <button type="submit" className="btn-primary">{editingId ? '✓ Update' : '+ Simpan'}</button>
+                    </div>
+                  </form>
+                </div>
               </DialogContent>
             </Dialog>
           </div>
