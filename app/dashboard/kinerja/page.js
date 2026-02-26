@@ -66,7 +66,7 @@ export default function KinerjaSayaPage() {
 
       console.log('Daftar nama pegawai:', list.map(p => p.nama))
 
-      const found = list.find(p => p.nama?.toLowerCase() === session?.user?.name?.toLowerCase())
+      const found = list.find(p => p.nama?.trim().toLowerCase() === session?.user?.name?.trim().toLowerCase())
 
       console.log('Found:', found)
 
