@@ -59,7 +59,7 @@ export default function KinerjaSayaPage() {
       const resPegawai = await fetch('/api/pegawai')
       const dataPegawai = await resPegawai.json()
       const list = Array.isArray(dataPegawai) ? dataPegawai : []
-      const found = list.find(p => p.nama?.toLowerCase() === session.user.name?.toLowerCase())
+      const found = list.find(p => p.email?.toLowerCase() === session.user.email?.toLowerCase())
       setPegawaiSaya(found || null)
       if (!found) { setKinerja([]); setLoading(false); return }
       const params = new URLSearchParams()
