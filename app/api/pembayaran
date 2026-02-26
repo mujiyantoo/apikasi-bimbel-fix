@@ -4,6 +4,15 @@ import { ObjectId } from 'mongodb'
 
 export const dynamic = 'force-dynamic'
 
+// ✅ Helper: cari query by _id (ObjectId) atau id (UUID string)
+function buildQuery(id) {
+  try {
+    return { _id: new ObjectId(id) }
+  } catch {
+    return { id: id }
+  }
+}
+
 // ============================================
 // GET /api/pembayaran — return array langsung
 // ============================================
@@ -70,7 +79,7 @@ export async function POST(request) {
 
 // ============================================
 // PUT /api/pembayaran?id=xxx — update status
-// Dipakai saat klik tombol "Bayar" di tagihan
+// ✅ Support ObjectId dan UUID
 // ============================================
 export async function PUT(request) {
   try {
@@ -95,14 +104,11 @@ export async function PUT(request) {
     // Bersihkan field yang tidak boleh diupdate
     const { _id, id: bodyId, ...updateFields } = body
 
+    // ✅ Coba ObjectId dulu, fallback ke UUID string
+    const query = buildQuery(id)
     const result = await db.collection('pembayaran').updateOne(
-      { _id: new ObjectId(id) },
-      {
-        $set: {
-          ...updateFields,
-          updatedAt: new Date()
-        }
-      }
+      query,
+      { $set: { ...updateFields, updatedAt: new Date() } }
     )
 
     if (result.matchedCount === 0) {
@@ -118,6 +124,7 @@ export async function PUT(request) {
 
 // ============================================
 // DELETE /api/pembayaran?id=xxx — hapus data
+// ✅ Support ObjectId dan UUID
 // ============================================
 export async function DELETE(request) {
   try {
@@ -138,9 +145,9 @@ export async function DELETE(request) {
 
     const { db } = connection
 
-    const result = await db.collection('pembayaran').deleteOne({
-      _id: new ObjectId(id)
-    })
+    // ✅ Coba ObjectId dulu, fallback ke UUID string
+    const query = buildQuery(id)
+    const result = await db.collection('pembayaran').deleteOne(query)
 
     if (result.deletedCount === 0) {
       return NextResponse.json({ error: 'Data tidak ditemukan' }, { status: 404 })
