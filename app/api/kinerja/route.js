@@ -10,10 +10,15 @@ const TARIF = {
 }
 
 const TARIF_PR_SMA = 33000
+const TARIF_PIKET = 7000
 
 function hitungGaji(jenjang, kategori, menitMengajar) {
+  // Piket: flat Rp 7.000 per sesi, tidak tergantung jenjang & durasi
+  if (kategori === 'Piket') return TARIF_PIKET
+
   const tarif = TARIF[jenjang]
   if (!tarif) return 0
+
   if (kategori === 'Reguler') {
     // Flat per sesi
     return tarif
@@ -103,7 +108,7 @@ export async function POST(request) {
       tanggal,
       jam_mulai,
       jam_selesai,
-      jenjang,
+      jenjang: jenjang || '-',
       kategori,
       menit_mengajar: menitMengajar,
       gaji,
