@@ -7,6 +7,20 @@ import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 
+// ✅ DIPINDAH KE LUAR KOMPONEN — ini penyebab bug tidak bisa ngetik
+const inp = {
+  padding: '10px 12px', border: '1.5px solid #e5e7eb', borderRadius: 10,
+  fontSize: 14, fontFamily: 'Plus Jakarta Sans, sans-serif', color: '#1e1b4b',
+  background: '#fafafa', outline: 'none', width: '100%', boxSizing: 'border-box'
+}
+
+const Field = ({ label, children }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</label>
+    {children}
+  </div>
+)
+
 export default function JadwalPage() {
   const { data: session } = useSession()
   const [jadwal, setJadwal] = useState([])
@@ -108,19 +122,6 @@ export default function JadwalPage() {
     doc.save(`Jadwal_${new Date().toISOString().split('T')[0]}.pdf`)
   }
 
-  const inp = {
-    padding: '10px 12px', border: '1.5px solid #e5e7eb', borderRadius: 10,
-    fontSize: 14, fontFamily: 'Plus Jakarta Sans, sans-serif', color: '#1e1b4b',
-    background: '#fafafa', outline: 'none', width: '100%', boxSizing: 'border-box'
-  }
-
-  const Field = ({ label, children }) => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</label>
-      {children}
-    </div>
-  )
-
   return (
     <>
       <style>{`
@@ -178,7 +179,6 @@ export default function JadwalPage() {
         .ld span:nth-child(2){animation-delay:.2s}.ld span:nth-child(3){animation-delay:.4s}
         @keyframes bou{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
 
-        /* MODAL */
         .mo { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; display:flex; align-items:flex-end; justify-content:center; animation:fI .2s; }
         @media(min-width:520px){ .mo{align-items:center;padding:1rem} }
         @keyframes fI{from{opacity:0}to{opacity:1}}
@@ -286,11 +286,10 @@ export default function JadwalPage() {
         </div>
       </div>
 
-      {/* MODAL CUSTOM — selalu bisa scroll, tombol selalu kelihatan */}
+      {/* MODAL */}
       {isDialogOpen && (
         <div className="mo" onClick={(e)=>{if(e.target===e.currentTarget)setIsDialogOpen(false)}}>
           <div className="mb">
-            {/* Header modal */}
             <div className="mh">
               <div className="mhl">
                 <div className="mi"><Calendar size={14} color="white"/></div>
@@ -299,9 +298,7 @@ export default function JadwalPage() {
               <button className="mx" onClick={()=>setIsDialogOpen(false)}><X size={13}/></button>
             </div>
 
-            {/* Form */}
             <form onSubmit={handleSubmit} style={{display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
-              {/* Body — bisa scroll */}
               <div className="mbody">
 
                 <div className="fsec">
@@ -354,7 +351,6 @@ export default function JadwalPage() {
 
               </div>
 
-              {/* Footer — SELALU kelihatan di bagian bawah */}
               <div className="mf">
                 <button type="button" className="bc" onClick={()=>setIsDialogOpen(false)}>Batal</button>
                 <button type="submit" className="bs">{editingId ? '✓ Update' : '+ Simpan'}</button>
