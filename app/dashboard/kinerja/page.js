@@ -58,14 +58,27 @@ export default function KinerjaSayaPage() {
     try {
       const resPegawai = await fetch('/api/pegawai')
       const dataPegawai = await resPegawai.json()
+
+      console.log('RAW pegawai response:', dataPegawai)
+      console.log('Session name:', session?.user?.name)
+
       const list = Array.isArray(dataPegawai) ? dataPegawai : []
-      console.log('Session name:', session.user.name)
-      console.log('Daftar pegawai:', list.map(p => p.nama))
-      
-      const found = list.find(...)
-      const found = list.find(p => p.email?.toLowerCase() === session.user.email?.toLowerCase())
+
+      console.log('Daftar nama pegawai:', list.map(p => p.nama))
+
+      const found = list.find(p => p.nama?.toLowerCase() === session?.user?.name?.toLowerCase())
+
+      console.log('Found:', found)
+
       setPegawaiSaya(found || null)
-      if (!found) { setKinerja([]); setLoading(false); return }
+
+      if (!found) {
+        setPesan({ type: 'error', text: 'Data pegawai tidak ditemukan. Pastikan nama akun login sama dengan nama di data pegawai.' })
+        setKinerja([])
+        setLoading(false)
+        return
+      }
+
       const params = new URLSearchParams()
       params.set('pengajar_id', found.id)
       params.set('bulan', filterBulan)
@@ -74,7 +87,7 @@ export default function KinerjaSayaPage() {
       const data = await res.json()
       setKinerja(Array.isArray(data) ? data : [])
     } catch (err) {
-      console.error(err)
+      console.error('fetchKinerja error:', err)
       setKinerja([])
     } finally {
       setLoading(false)
@@ -152,7 +165,6 @@ export default function KinerjaSayaPage() {
     <RoleProtector allowedRoles={['Owner', 'Pegawai']}>
       <div className="p-4 max-w-4xl mx-auto space-y-4">
 
-        {/* Header - simpel, tidak bentrok dengan sidebar */}
         <div className="flex items-center justify-between pt-1">
           <div>
             <h1 className="text-xl font-bold text-gray-900">Kinerja Saya</h1>
@@ -173,14 +185,12 @@ export default function KinerjaSayaPage() {
           </div>
         </div>
 
-        {/* Pesan */}
         {pesan && (
           <div className={'rounded-xl p-3 text-sm ' + (pesan.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700')}>
             {pesan.text}
           </div>
         )}
 
-        {/* Form Input */}
         {showForm && (
           <Card className="border-0 shadow-md">
             <CardHeader>
@@ -240,7 +250,6 @@ export default function KinerjaSayaPage() {
           </Card>
         )}
 
-        {/* Filter + Tabel */}
         <Card className="border-0 shadow-md">
           <CardHeader>
             <div className="grid grid-cols-2 gap-3">
@@ -261,7 +270,6 @@ export default function KinerjaSayaPage() {
           </CardHeader>
           <CardContent>
 
-            {/* Info tarif */}
             <div className="mb-4 grid grid-cols-2 gap-3">
               <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
                 <p className="text-xs font-semibold text-blue-700 mb-1">Reguler (per sesi)</p>
@@ -277,7 +285,6 @@ export default function KinerjaSayaPage() {
               </div>
             </div>
 
-            {/* Total Gaji */}
             <div className="mb-4 p-4 bg-green-50 rounded-lg border border-green-200">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <span className="text-sm font-medium text-green-700">Total Gaji Bulan Ini</span>
@@ -289,7 +296,6 @@ export default function KinerjaSayaPage() {
               <p className="text-xs text-green-600 mt-1">{kinerja.length} sesi mengajar</p>
             </div>
 
-            {/* Tabel */}
             {loading ? (
               <div className="text-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-blue-600 mx-auto" />
