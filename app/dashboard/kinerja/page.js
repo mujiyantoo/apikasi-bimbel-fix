@@ -21,7 +21,7 @@ const bulanOptions = [
 ]
 
 const jenjangOptions = ['SD', 'SMP', 'SMA']
-const kategoriOptions = ['Reguler', 'PR']
+const kategoriOptions = ['Reguler', 'PR', 'Piket']
 
 const defaultForm = {
   tanggal: new Date().toISOString().split('T')[0],
@@ -58,27 +58,15 @@ export default function KinerjaSayaPage() {
     try {
       const resPegawai = await fetch('/api/pegawai')
       const dataPegawai = await resPegawai.json()
-
-      console.log('RAW pegawai response:', dataPegawai)
-      console.log('Session name:', session?.user?.name)
-
       const list = Array.isArray(dataPegawai) ? dataPegawai : []
-
-      console.log('Daftar nama pegawai:', list.map(p => p.nama))
-
       const found = list.find(p => p.nama?.trim().toLowerCase() === session?.user?.name?.trim().toLowerCase())
-
-      console.log('Found:', found)
-
       setPegawaiSaya(found || null)
-
       if (!found) {
         setPesan({ type: 'error', text: 'Data pegawai tidak ditemukan. Pastikan nama akun login sama dengan nama di data pegawai.' })
         setKinerja([])
         setLoading(false)
         return
       }
-
       const params = new URLSearchParams()
       params.set('pengajar_id', found.id)
       params.set('bulan', filterBulan)
@@ -95,6 +83,9 @@ export default function KinerjaSayaPage() {
   }
 
   const hitungGaji = (jenjang, kategori, jamMulai, jamSelesai) => {
+    // Piket: flat Rp 7.000 per sesi
+    if (kategori === 'Piket') return 7000
+
     if (!jamMulai || !jamSelesai) return 0
     const parts1 = jamMulai.split(':')
     const parts2 = jamSelesai.split(':')
@@ -112,8 +103,12 @@ export default function KinerjaSayaPage() {
   }
 
   const handleSubmit = async () => {
-    if (!form.tanggal || !form.jam_mulai || !form.jam_selesai || !form.jenjang || !form.kategori) {
+    const isPiket = form.kategori === 'Piket'
+    if (!form.tanggal || !form.jam_mulai || !form.jam_selesai || !form.kategori) {
       setPesan({ type: 'error', text: 'Harap isi semua field yang wajib!' }); return
+    }
+    if (!isPiket && !form.jenjang) {
+      setPesan({ type: 'error', text: 'Harap pilih jenjang!' }); return
     }
     if (!pegawaiSaya) { setPesan({ type: 'error', text: 'Data pegawai tidak ditemukan.' }); return }
     const parts1 = form.jam_mulai.split(':'), parts2 = form.jam_selesai.split(':')
@@ -129,7 +124,7 @@ export default function KinerjaSayaPage() {
         body: JSON.stringify({
           pengajar_id: pegawaiSaya.id, pengajar_nama: pegawaiSaya.nama,
           tanggal: form.tanggal, jam_mulai: form.jam_mulai, jam_selesai: form.jam_selesai,
-          menit_mengajar: menit, jenjang: form.jenjang, kategori: form.kategori,
+          menit_mengajar: menit, jenjang: form.jenjang || '-', kategori: form.kategori,
           keterangan: form.keterangan, gaji
         })
       })
@@ -212,18 +207,24 @@ export default function KinerjaSayaPage() {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Jenjang *</Label>
-                  <Select value={form.jenjang} onValueChange={(v) => setForm({ ...form, jenjang: v })}>
-                    <SelectTrigger><SelectValue placeholder="Pilih" /></SelectTrigger>
-                    <SelectContent>
-                      {jenjangOptions.map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
+                {/* Jenjang disembunyikan jika Piket */}
+                {form.kategori !== 'Piket' && (
+                  <div>
+                    <Label>Jenjang *</Label>
+                    <Select value={form.jenjang} onValueChange={(v) => setForm({ ...form, jenjang: v })}>
+                      <SelectTrigger><SelectValue placeholder="Pilih" /></SelectTrigger>
+                      <SelectContent>
+                        {jenjangOptions.map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className={form.kategori === 'Piket' ? 'col-span-2' : ''}>
                   <Label>Kategori *</Label>
-                  <Select value={form.kategori} onValueChange={(v) => setForm({ ...form, kategori: v })}>
+                  <Select
+                    value={form.kategori}
+                    onValueChange={(v) => setForm({ ...form, kategori: v, jenjang: v === 'Piket' ? '' : form.jenjang })}
+                  >
                     <SelectTrigger><SelectValue placeholder="Pilih" /></SelectTrigger>
                     <SelectContent>
                       {kategoriOptions.map(k => <SelectItem key={k} value={k}>{k}</SelectItem>)}
@@ -236,10 +237,10 @@ export default function KinerjaSayaPage() {
                 <Input placeholder="Contoh: Matematika bab persamaan linear"
                   value={form.keterangan} onChange={(e) => setForm({ ...form, keterangan: e.target.value })} />
               </div>
-              {previewGaji > 0 && (
+              {(previewGaji > 0 || form.kategori === 'Piket') && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center justify-between">
                   <span className="text-sm text-green-700 font-medium">Estimasi Gaji:</span>
-                  <span className="font-bold text-green-600">{formatRupiah(previewGaji)}</span>
+                  <span className="font-bold text-green-600">{formatRupiah(form.kategori === 'Piket' ? 7000 : previewGaji)}</span>
                 </div>
               )}
               <Button onClick={handleSubmit} disabled={submitLoading} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
@@ -270,7 +271,7 @@ export default function KinerjaSayaPage() {
           </CardHeader>
           <CardContent>
 
-            <div className="mb-4 grid grid-cols-2 gap-3">
+            <div className="mb-4 grid grid-cols-3 gap-3">
               <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
                 <p className="text-xs font-semibold text-blue-700 mb-1">Reguler (per sesi)</p>
                 <p className="text-xs text-gray-600">SD: Rp 24.000</p>
@@ -282,6 +283,10 @@ export default function KinerjaSayaPage() {
                 <p className="text-xs text-gray-600">SD: Rp 24.000</p>
                 <p className="text-xs text-gray-600">SMP: Rp 25.000</p>
                 <p className="text-xs text-gray-600">SMA: Rp 33.000</p>
+              </div>
+              <div className="bg-purple-50 rounded-lg p-3 border border-purple-100">
+                <p className="text-xs font-semibold text-purple-700 mb-1">Piket (flat per sesi)</p>
+                <p className="text-xs text-gray-600">Semua: Rp 7.000</p>
               </div>
             </div>
 
@@ -324,9 +329,14 @@ export default function KinerjaSayaPage() {
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap text-xs">{item.jam_mulai}-{item.jam_selesai}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-xs">{item.menit_mengajar}m</td>
-                        <td className="px-3 py-2 text-xs">{item.jenjang}</td>
+                        <td className="px-3 py-2 text-xs">{item.jenjang || '-'}</td>
                         <td className="px-3 py-2">
-                          <span className={'px-1.5 py-0.5 rounded text-xs font-medium ' + (item.kategori === 'Reguler' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700')}>
+                          <span className={
+                            'px-1.5 py-0.5 rounded text-xs font-medium ' +
+                            (item.kategori === 'Reguler' ? 'bg-blue-100 text-blue-700' :
+                             item.kategori === 'Piket' ? 'bg-purple-100 text-purple-700' :
+                             'bg-orange-100 text-orange-700')
+                          }>
                             {item.kategori}
                           </span>
                         </td>
