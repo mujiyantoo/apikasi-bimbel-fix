@@ -1,96 +1,154 @@
-/**
- * COPY FILE INI KE: app/api/pembayaran/route.js
- * 
- * GANTI SELURUH ISI FILE dengan kode di bawah ini
- */
+import { NextResponse } from 'next/server'
+import { getMongoConnection } from '@/lib/mongodb'
+import { ObjectId } from 'mongodb'
 
-import { NextResponse } from 'next/server';
-import { getMongoConnection } from '@/lib/mongodb';
+export const dynamic = 'force-dynamic'
 
-// GET /api/pembayaran - Get all pembayaran
+// ============================================
+// GET /api/pembayaran — return array langsung
+// ============================================
 export async function GET(request) {
   try {
-    const connection = await getMongoConnection();
-
+    const connection = await getMongoConnection()
     if (!connection) {
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'Database not configured',
-          message: 'MongoDB connection is not available',
-          data: []
-        },
-        { status: 503 }
-      );
+      return NextResponse.json([], { status: 503 })
     }
 
-    const { db } = connection;
-
+    const { db } = connection
     const pembayaran = await db.collection('pembayaran')
       .find({})
       .sort({ createdAt: -1 })
-      .toArray();
+      .toArray()
 
-    return NextResponse.json({ 
-      success: true, 
-      data: pembayaran 
-    });
+    // Tambahkan field `id` string agar frontend bisa pakai p.id
+    const result = pembayaran.map(p => ({
+      ...p,
+      id: p._id.toString()
+    }))
+
+    return NextResponse.json(result)
   } catch (error) {
-    console.error('❌ GET /api/pembayaran Error:', error);
-    return NextResponse.json(
-      { 
-        success: false,
-        error: 'Internal server error',
-        message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong',
-        data: []
-      },
-      { status: 500 }
-    );
+    console.error('GET /api/pembayaran Error:', error)
+    return NextResponse.json([], { status: 500 })
   }
 }
 
-// POST /api/pembayaran - Create new pembayaran
+// ============================================
+// POST /api/pembayaran — buat pembayaran baru
+// ============================================
 export async function POST(request) {
   try {
-    const body = await request.json();
-    const connection = await getMongoConnection();
-
+    const body = await request.json()
+    const connection = await getMongoConnection()
     if (!connection) {
       return NextResponse.json(
-        { 
-          success: false,
-          error: 'Database not configured',
-          message: 'MongoDB connection is not available'
-        },
+        { error: 'Database tidak tersedia' },
         { status: 503 }
-      );
+      )
     }
 
-    const { db } = connection;
+    const { db } = connection
 
     const pembayaranData = {
       ...body,
+      jumlah: parseInt(body.jumlah) || 0,
       createdAt: new Date(),
       updatedAt: new Date()
-    };
+    }
 
-    const result = await db.collection('pembayaran').insertOne(pembayaranData);
-    const newPembayaran = await db.collection('pembayaran').findOne({ _id: result.insertedId });
+    const result = await db.collection('pembayaran').insertOne(pembayaranData)
 
-    return NextResponse.json({ 
-      success: true, 
-      data: newPembayaran,
-      message: 'Pembayaran created successfully'
-    }, { status: 201 });
-  } catch (error) {
-    console.error('❌ POST /api/pembayaran Error:', error);
     return NextResponse.json(
-      { 
-        success: false,
-        error: 'Internal server error',
-        message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
-      },
-      { status: 500 }
-    );
+      { message: 'Pembayaran berhasil ditambahkan', id: result.insertedId },
+      { status: 201 }
+    )
+  } catch (error) {
+    console.error('POST /api/pembayaran Error:', error)
+    return NextResponse.json({ error: 'Gagal menambahkan pembayaran' }, { status: 500 })
+  }
+}
+
+// ============================================
+// PUT /api/pembayaran?id=xxx — update status
+// Dipakai saat klik tombol "Bayar" di tagihan
+// ============================================
+export async function PUT(request) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID tidak ditemukan' }, { status: 400 })
+    }
+
+    const body = await request.json()
+    const connection = await getMongoConnection()
+    if (!connection) {
+      return NextResponse.json(
+        { error: 'Database tidak tersedia' },
+        { status: 503 }
+      )
+    }
+
+    const { db } = connection
+
+    // Bersihkan field yang tidak boleh diupdate
+    const { _id, id: bodyId, ...updateFields } = body
+
+    const result = await db.collection('pembayaran').updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          ...updateFields,
+          updatedAt: new Date()
+        }
+      }
+    )
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json({ error: 'Data tidak ditemukan' }, { status: 404 })
+    }
+
+    return NextResponse.json({ message: 'Status pembayaran berhasil diupdate' })
+  } catch (error) {
+    console.error('PUT /api/pembayaran Error:', error)
+    return NextResponse.json({ error: 'Gagal mengupdate pembayaran' }, { status: 500 })
+  }
+}
+
+// ============================================
+// DELETE /api/pembayaran?id=xxx — hapus data
+// ============================================
+export async function DELETE(request) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID tidak ditemukan' }, { status: 400 })
+    }
+
+    const connection = await getMongoConnection()
+    if (!connection) {
+      return NextResponse.json(
+        { error: 'Database tidak tersedia' },
+        { status: 503 }
+      )
+    }
+
+    const { db } = connection
+
+    const result = await db.collection('pembayaran').deleteOne({
+      _id: new ObjectId(id)
+    })
+
+    if (result.deletedCount === 0) {
+      return NextResponse.json({ error: 'Data tidak ditemukan' }, { status: 404 })
+    }
+
+    return NextResponse.json({ message: 'Pembayaran berhasil dihapus' })
+  } catch (error) {
+    console.error('DELETE /api/pembayaran Error:', error)
+    return NextResponse.json({ error: 'Gagal menghapus pembayaran' }, { status: 500 })
   }
 }
