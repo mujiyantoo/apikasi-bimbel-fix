@@ -17,30 +17,21 @@ import {
   ArrowLeft, CheckCircle
 } from 'lucide-react'
 
-// =============================================
-// TARIF SPP PER JENJANG
-// =============================================
-const SPP_TARIF = {
-  SD: 200000,
-  SMP: 250000,
-  SMA: 250000
-}
+const SPP_TARIF = { SD: 200000, SMP: 250000, SMA: 250000 }
 
 const getSPPTarif = (kelas = '') => {
   const k = kelas.toUpperCase()
   if (k.includes('SD') || k.match(/^[1-6]/)) return SPP_TARIF.SD
   if (k.includes('SMP') || k.match(/^[7-9]/)) return SPP_TARIF.SMP
   if (k.includes('SMA') || k.match(/^1[0-2]/)) return SPP_TARIF.SMA
-  return SPP_TARIF.SD // default
+  return SPP_TARIF.SD
 }
 
 const bulanOptions = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ]
-
 const tahunOptions = ['2023', '2024', '2025', '2026']
-
 const bulanSekarang = new Date().toLocaleDateString('id-ID', { month: 'long' })
 const tahunSekarang = new Date().getFullYear().toString()
 
@@ -53,7 +44,7 @@ export default function KeuanganPage() {
   const [search, setSearch] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [bayarItem, setBayarItem] = useState(null) // item yang sedang dibayar
+  const [bayarItem, setBayarItem] = useState(null)
   const { data: session } = useSession()
   const userRole = session?.user?.role || 'Admin'
 
@@ -63,9 +54,6 @@ export default function KeuanganPage() {
     jumlah: '', status: 'lunas', keterangan: ''
   })
 
-  // =============================================
-  // FETCH DATA
-  // =============================================
   const fetchPembayaran = async () => {
     setLoading(true)
     try {
@@ -98,46 +86,68 @@ export default function KeuanganPage() {
 
   // =============================================
   // AUTO-GENERATE PENDING SPP BULANAN
-  // Cek setiap siswa: jika belum ada SPP bulan ini → buat pending
+  // ✅ Skip siswa Cuti
+  // ✅ Hapus pending SPP siswa yang sedang Cuti
   // =============================================
   const generateSPPBulanan = async (siswaData, pembayaranData) => {
     setGenerating(true)
     try {
+      // Pisahkan siswa aktif dan cuti
+      const siswaAktif = siswaData.filter(s => (s.status || 'Aktif') === 'Aktif')
+      const siswaCutiIds = new Set(
+        siswaData.filter(s => s.status === 'Cuti').map(s => s.id)
+      )
+
+      // ✅ Hapus pending SPP bulan ini untuk siswa yang Cuti
+      const pendingHarusDihapus = pembayaranData.filter(p =>
+        p.status === 'pending' &&
+        p.jenis === 'SPP' &&
+        p.bulan === bulanSekarang &&
+        p.tahun === tahunSekarang &&
+        siswaCutiIds.has(p.siswaId)
+      )
+
+      if (pendingHarusDihapus.length > 0) {
+        await Promise.all(
+          pendingHarusDihapus.map(p =>
+            fetch(`/api/pembayaran?id=${p.id}`, { method: 'DELETE' })
+          )
+        )
+        toast.info(`${pendingHarusDihapus.length} tagihan SPP siswa Cuti dihapus otomatis`)
+      }
+
+      // ✅ Buat pending hanya untuk siswa Aktif yang belum punya SPP bulan ini
       const sudahAdaSPP = new Set(
         pembayaranData
           .filter(p => p.jenis === 'SPP' && p.bulan === bulanSekarang && p.tahun === tahunSekarang)
           .map(p => p.siswaId)
       )
 
-      const siswaBlumAdaSPP = siswaData.filter(s => !sudahAdaSPP.has(s.id))
+      const siswaBlumAdaSPP = siswaAktif.filter(s => !sudahAdaSPP.has(s.id))
 
-      if (siswaBlumAdaSPP.length === 0) return
-
-      // Buat pending SPP untuk setiap siswa yang belum punya
-      await Promise.all(
-        siswaBlumAdaSPP.map(siswa =>
-          fetch('/api/pembayaran', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              siswaId: siswa.id,
-              namaSiswa: siswa.nama,
-              jenis: 'SPP',
-              bulan: bulanSekarang,
-              tahun: tahunSekarang,
-              jumlah: getSPPTarif(siswa.kelas),
-              status: 'pending',
-              keterangan: `SPP ${bulanSekarang} ${tahunSekarang} - ${siswa.kelas}`
-            })
-          })
-        )
-      )
-
-      // Reload data setelah generate
-      await fetchPembayaran()
       if (siswaBlumAdaSPP.length > 0) {
+        await Promise.all(
+          siswaBlumAdaSPP.map(siswa =>
+            fetch('/api/pembayaran', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                siswaId: siswa.id,
+                namaSiswa: siswa.nama,
+                jenis: 'SPP',
+                bulan: bulanSekarang,
+                tahun: tahunSekarang,
+                jumlah: getSPPTarif(siswa.kelas),
+                status: 'pending',
+                keterangan: `SPP ${bulanSekarang} ${tahunSekarang} - ${siswa.kelas}`
+              })
+            })
+          )
+        )
         toast.info(`${siswaBlumAdaSPP.length} tagihan SPP ${bulanSekarang} dibuat otomatis`)
       }
+
+      await fetchPembayaran()
     } catch (err) {
       console.error('Generate SPP error:', err)
     } finally {
@@ -154,8 +164,6 @@ export default function KeuanganPage() {
       const pembayaranData = Array.isArray(pembayaranRes) ? pembayaranRes : []
       setPembayaran(pembayaranData)
       setLoading(false)
-
-      // Auto-generate SPP pending untuk bulan ini
       if (siswaData.length > 0) {
         await generateSPPBulanan(siswaData, pembayaranData)
       }
@@ -163,9 +171,6 @@ export default function KeuanganPage() {
     init()
   }, [])
 
-  // =============================================
-  // DERIVED DATA
-  // =============================================
   const filteredData = useMemo(() => {
     let data = pembayaran
     if (activeTab === 'spp') {
@@ -194,9 +199,6 @@ export default function KeuanganPage() {
     return { income, expense, pending, net: income - expense }
   }, [pembayaran])
 
-  // =============================================
-  // HANDLERS
-  // =============================================
   const handleOpenDialog = () => {
     setFormData({
       siswaId: '', namaSiswa: '',
@@ -209,17 +211,12 @@ export default function KeuanganPage() {
     setIsDialogOpen(true)
   }
 
-  // Tombol Bayar di tabel tagihan — langsung isi form dari data tagihan
   const handleBayar = (item) => {
     setBayarItem(item)
     setFormData({
-      siswaId: item.siswaId,
-      namaSiswa: item.namaSiswa,
-      jenis: item.jenis,
-      bulan: item.bulan,
-      tahun: item.tahun,
-      jumlah: item.jumlah.toString(),
-      status: 'lunas',
+      siswaId: item.siswaId, namaSiswa: item.namaSiswa,
+      jenis: item.jenis, bulan: item.bulan, tahun: item.tahun,
+      jumlah: item.jumlah.toString(), status: 'lunas',
       keterangan: item.keterangan || ''
     })
     setIsDialogOpen(true)
@@ -228,12 +225,11 @@ export default function KeuanganPage() {
   const handleSiswaChange = (value) => {
     const selectedSiswa = siswaList.find(s => s.id === value)
     if (selectedSiswa) {
-      const tarif = getSPPTarif(selectedSiswa.kelas)
       setFormData({
         ...formData,
         siswaId: value,
         namaSiswa: selectedSiswa.nama,
-        jumlah: formData.jenis === 'SPP' ? tarif.toString() : formData.jumlah
+        jumlah: formData.jenis === 'SPP' ? getSPPTarif(selectedSiswa.kelas).toString() : formData.jumlah
       })
     }
   }
@@ -241,8 +237,7 @@ export default function KeuanganPage() {
   const handleJenisChange = (val) => {
     const siswa = siswaList.find(s => s.id === formData.siswaId)
     setFormData({
-      ...formData,
-      jenis: val,
+      ...formData, jenis: val,
       jumlah: val === 'SPP' && siswa ? getSPPTarif(siswa.kelas).toString() : formData.jumlah
     })
   }
@@ -252,8 +247,6 @@ export default function KeuanganPage() {
     setSubmitting(true)
     try {
       let res
-
-      // Jika bayar tagihan yang sudah ada (update status)
       if (bayarItem?.id) {
         res = await fetch(`/api/pembayaran?id=${bayarItem.id}`, {
           method: 'PUT',
@@ -261,7 +254,6 @@ export default function KeuanganPage() {
           body: JSON.stringify({ status: 'lunas', jumlah: parseInt(formData.jumlah) })
         })
       } else {
-        // Tambah pembayaran baru
         const payload = {
           ...formData,
           jumlah: parseInt(formData.jumlah),
@@ -274,10 +266,8 @@ export default function KeuanganPage() {
           body: JSON.stringify(payload)
         })
       }
-
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Terjadi kesalahan')
-
       toast.success(bayarItem ? 'Pembayaran berhasil dikonfirmasi!' : formData.jenis === 'Pengeluaran' ? 'Pengeluaran dicatat' : 'Pembayaran berhasil')
       setIsDialogOpen(false)
       setBayarItem(null)
@@ -322,7 +312,6 @@ export default function KeuanganPage() {
           </Button>
         )}
 
-        {/* DIALOG FORM */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
@@ -336,8 +325,6 @@ export default function KeuanganPage() {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-
-              {/* Jika bayar tagihan existing, tampilkan info ringkas */}
               {bayarItem ? (
                 <div className="bg-blue-50 rounded-lg p-3 space-y-1 text-sm">
                   <div className="flex justify-between"><span className="text-gray-600">Siswa</span><span className="font-semibold">{bayarItem.namaSiswa}</span></div>
@@ -352,7 +339,8 @@ export default function KeuanganPage() {
                       <Select value={formData.siswaId} onValueChange={handleSiswaChange}>
                         <SelectTrigger><SelectValue placeholder="Pilih siswa" /></SelectTrigger>
                         <SelectContent>
-                          {siswaList.map((s) => (
+                          {/* ✅ Hanya tampilkan siswa Aktif di dropdown */}
+                          {siswaList.filter(s => (s.status || 'Aktif') === 'Aktif').map((s) => (
                             <SelectItem key={s.id} value={s.id}>{s.nama} - {s.kelas}</SelectItem>
                           ))}
                         </SelectContent>
@@ -369,7 +357,6 @@ export default function KeuanganPage() {
                       />
                     </div>
                   )}
-
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Bulan</Label>
@@ -386,7 +373,6 @@ export default function KeuanganPage() {
                       </Select>
                     </div>
                   </div>
-
                   <div className="space-y-2">
                     <Label>Jenis</Label>
                     <Select value={formData.jenis} onValueChange={handleJenisChange}>
@@ -405,8 +391,6 @@ export default function KeuanganPage() {
                       </SelectContent>
                     </Select>
                   </div>
-
-                  {/* Info tarif SPP */}
                   {formData.jenis === 'SPP' && (
                     <div className="bg-blue-50 rounded-lg px-3 py-2 text-xs text-blue-700">
                       Tarif: SD Rp 200.000 · SMP Rp 250.000 · SMA Rp 250.000
@@ -414,7 +398,6 @@ export default function KeuanganPage() {
                   )}
                 </>
               )}
-
               <div className="space-y-2">
                 <Label>Jumlah (Rp) *</Label>
                 <Input
@@ -426,7 +409,6 @@ export default function KeuanganPage() {
                   className={bayarItem ? 'bg-gray-50' : ''}
                 />
               </div>
-
               {!bayarItem && (
                 <div className="space-y-2">
                   <Label>Status</Label>
@@ -439,7 +421,6 @@ export default function KeuanganPage() {
                   </Select>
                 </div>
               )}
-
               <div className="flex gap-3 pt-4">
                 <Button type="button" variant="outline" onClick={() => { setIsDialogOpen(false); setBayarItem(null) }} className="flex-1">Batal</Button>
                 <Button type="submit" disabled={submitting} className="flex-1 bg-blue-600 text-white hover:bg-blue-700">
@@ -460,22 +441,18 @@ export default function KeuanganPage() {
             <CardDescription>{formatCurrency(stats.income)}</CardDescription>
           </CardHeader>
         </Card>
-
         <Card onClick={() => setActiveTab('tagihan')} className={`border-0 shadow-md cursor-pointer transition-all ${activeTab === 'tagihan' ? 'ring-2 ring-emerald-500 bg-emerald-50' : 'hover:shadow-lg'}`}>
           <CardHeader>
             <div className="p-3 bg-emerald-100 rounded-xl w-fit mb-2"><Receipt className="w-6 h-6 text-emerald-600" /></div>
             <CardTitle className="text-lg">Tagihan Pending</CardTitle>
             <CardDescription>
-              {filteredData.length === 0 && activeTab !== 'tagihan'
-                ? formatCurrency(stats.pending)
-                : formatCurrency(stats.pending)}
+              {formatCurrency(stats.pending)}
               <span className="ml-2 text-emerald-600 font-semibold">
                 ({pembayaran.filter(p => p.status === 'pending').length} siswa)
               </span>
             </CardDescription>
           </CardHeader>
         </Card>
-
         {userRole === 'Owner' && (
           <Card onClick={() => setActiveTab('laporan')} className={`border-0 shadow-md cursor-pointer transition-all ${activeTab === 'laporan' ? 'ring-2 ring-purple-500 bg-purple-50' : 'hover:shadow-lg'}`}>
             <CardHeader>
@@ -485,7 +462,6 @@ export default function KeuanganPage() {
             </CardHeader>
           </Card>
         )}
-
         <Card onClick={() => setActiveTab('pengeluaran')} className={`border-0 shadow-md cursor-pointer transition-all ${activeTab === 'pengeluaran' ? 'ring-2 ring-amber-500 bg-amber-50' : 'hover:shadow-lg'}`}>
           <CardHeader>
             <div className="p-3 bg-amber-100 rounded-xl w-fit mb-2"><Wallet className="w-6 h-6 text-amber-600" /></div>
@@ -538,8 +514,7 @@ export default function KeuanganPage() {
               <div>
                 <CardTitle className="text-lg capitalize">
                   {activeTab === 'spp' ? 'Riwayat Pemasukan' :
-                    activeTab === 'pengeluaran' ? 'Riwayat Pengeluaran' :
-                      'Daftar Tagihan Pending'}
+                    activeTab === 'pengeluaran' ? 'Riwayat Pengeluaran' : 'Daftar Tagihan Pending'}
                 </CardTitle>
                 <CardDescription>{filteredData.length} data ditemukan</CardDescription>
               </div>
@@ -590,11 +565,7 @@ export default function KeuanganPage() {
                         </TableCell>
                         {activeTab === 'tagihan' && (
                           <TableCell>
-                            <Button
-                              size="sm"
-                              onClick={() => handleBayar(p)}
-                              className="bg-green-600 hover:bg-green-700 text-white h-7 px-3 text-xs"
-                            >
+                            <Button size="sm" onClick={() => handleBayar(p)} className="bg-green-600 hover:bg-green-700 text-white h-7 px-3 text-xs">
                               <CheckCircle className="w-3 h-3 mr-1" /> Bayar
                             </Button>
                           </TableCell>
