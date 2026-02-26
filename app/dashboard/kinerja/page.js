@@ -59,6 +59,10 @@ export default function KinerjaSayaPage() {
       const resPegawai = await fetch('/api/pegawai')
       const dataPegawai = await resPegawai.json()
       const list = Array.isArray(dataPegawai) ? dataPegawai : []
+      console.log('Session name:', session.user.name)
+      console.log('Daftar pegawai:', list.map(p => p.nama))
+      
+      const found = list.find(...)
       const found = list.find(p => p.email?.toLowerCase() === session.user.email?.toLowerCase())
       setPegawaiSaya(found || null)
       if (!found) { setKinerja([]); setLoading(false); return }
