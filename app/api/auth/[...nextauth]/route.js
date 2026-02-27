@@ -16,7 +16,7 @@ const handler = NextAuth({
           console.log('Login attempt:', { email: credentials?.email })
 
           const client = await clientPromise
-          const db = client.db('bimbel')
+          const db = client.db('bimbel_db')
           
           const user = await db.collection('users').findOne({ email: credentials.email })
 
