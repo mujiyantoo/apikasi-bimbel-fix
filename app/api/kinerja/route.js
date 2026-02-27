@@ -6,10 +6,10 @@ export const dynamic = 'force-dynamic'
 const TARIF = {
   SD: 24000,
   SMP: 25000,
-  SMA: 22000
+  SMA: 25000
 }
 
-const TARIF_PR_SMA = 33000
+const TARIF_PR_SMA = 25000
 const TARIF_PIKET = 7000
 
 function hitungGaji(jenjang, kategori, menitMengajar) {
@@ -24,7 +24,6 @@ function hitungGaji(jenjang, kategori, menitMengajar) {
     return tarif
   } else {
     // PR: (menit / 90) × 0.75 × tarif
-    // Khusus SMA PR pakai tarif 33.000
     const tarifPR = jenjang === 'SMA' ? TARIF_PR_SMA : tarif
     return Math.round((menitMengajar / 90) * 0.75 * tarifPR)
   }
