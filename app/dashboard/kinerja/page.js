@@ -276,13 +276,13 @@ export default function KinerjaSayaPage() {
                 <p className="text-xs font-semibold text-blue-700 mb-1">Reguler (per sesi)</p>
                 <p className="text-xs text-gray-600">SD: Rp 24.000</p>
                 <p className="text-xs text-gray-600">SMP: Rp 25.000</p>
-                <p className="text-xs text-gray-600">SMA: Rp 22.000</p>
+                <p className="text-xs text-gray-600">SMA: Rp 25.000</p>
               </div>
               <div className="bg-orange-50 rounded-lg p-3 border border-orange-100">
                 <p className="text-xs font-semibold text-orange-700 mb-1">PR (mnt/90×0,75×tarif)</p>
                 <p className="text-xs text-gray-600">SD: Rp 24.000</p>
                 <p className="text-xs text-gray-600">SMP: Rp 25.000</p>
-                <p className="text-xs text-gray-600">SMA: Rp 33.000</p>
+                <p className="text-xs text-gray-600">SMA: Rp 25.000</p>
               </div>
               <div className="bg-purple-50 rounded-lg p-3 border border-purple-100">
                 <p className="text-xs font-semibold text-purple-700 mb-1">Piket (flat per sesi)</p>
