@@ -93,8 +93,8 @@ export default function KinerjaSayaPage() {
     const h2 = parseInt(parts2[0]), m2 = parseInt(parts2[1])
     const menit = (h2 * 60 + m2) - (h1 * 60 + m1)
     if (menit <= 0) return 0
-    const tarifReguler = { 'SD': 24000, 'SMP': 25000, 'SMA': 22000 }
-    const tarifPR = { 'SD': 24000, 'SMP': 25000, 'SMA': 33000 }
+    const tarifReguler = { 'SD': 24000, 'SMP': 25000, 'SMA': 25000 }
+    const tarifPR = { 'SD': 25000, 'SMP': 25000, 'SMA': 25000 }
     if (kategori === 'Reguler') {
       return (tarifReguler[jenjang] || 0) * Math.floor(menit / 60)
     } else {
