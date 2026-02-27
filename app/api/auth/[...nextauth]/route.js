@@ -50,22 +50,43 @@ const handler = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = user.role
         token.id = user.id
+        token.email = user.email
+        token.name = user.name
+        token.role = user.role
+        token.iat = Math.floor(Date.now() / 1000) // Issue time
       }
+      
+      // Log untuk debugging
+      console.log('JWT Callback - Role:', token.role, 'Email:', token.email)
+      
       return token
     },
     async session({ session, token }) {
-      session.user.role = token.role
-      session.user.id = token.id
+      if (token && session.user) {
+        session.user.id = token.id
+        session.user.email = token.email
+        session.user.name = token.name
+        session.user.role = token.role
+      }
+      
+      // Log untuk debugging
+      console.log('Session Callback - Role:', session.user?.role, 'Email:', session.user?.email)
+      
       return session
     }
   },
   pages: {
-    signIn: '/login'
+    signIn: '/login',
+    signOut: '/login',
+    error: '/login'
   },
   session: {
-    strategy: 'jwt'
+    strategy: 'jwt',
+    maxAge: 24 * 60 * 60 // 24 jam - session expire otomatis
+  },
+  jwt: {
+    maxAge: 24 * 60 * 60 // 24 jam - JWT expire otomatis
   },
   secret: process.env.NEXTAUTH_SECRET
 })
