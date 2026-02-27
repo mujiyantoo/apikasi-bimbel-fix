@@ -134,13 +134,38 @@ export function Sidebar() {
               </div>
             </div>
             <Button
-              variant="outline"
-              className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-              onClick={() => signOut({ callbackUrl: '/login' })}
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Keluar
-            </Button>
+  variant="outline"
+  className="w-full justify-start text-gray-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50"
+  onClick={async () => {
+    try {
+      // Clear all storage SEBELUM logout
+      if (typeof window !== 'undefined') {
+        localStorage.clear()
+        sessionStorage.clear()
+        
+        // Clear all cookies (optional)
+        document.cookie.split(";").forEach((c) => {
+          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        });
+      }
+      
+      // Logout dengan redirect paksa
+      await signOut({ 
+        callbackUrl: '/login',
+        redirect: true 
+      })
+    } catch (error) {
+      console.error('Logout error:', error)
+      // Paksa redirect manual jika signOut gagal
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login'
+      }
+    }
+  }}
+>
+  <LogOut className="w-4 h-4 mr-2" />
+  Keluar
+</Button>
           </div>
         </div>
       </aside>
