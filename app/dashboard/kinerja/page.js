@@ -158,7 +158,7 @@ export default function KinerjaSayaPage() {
   }
 
   return (
-    <RoleProtector allowedRoles={['owner', 'pegawai']}>
+    <RoleProtector allowedRoles={['Owner', 'Pegawai']}>
       <div className="p-4 max-w-4xl mx-auto space-y-4">
 
         <div className="flex items-center justify-between pt-1">
