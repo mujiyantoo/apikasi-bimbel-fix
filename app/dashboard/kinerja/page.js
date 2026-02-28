@@ -35,6 +35,7 @@ const defaultForm = {
 export default function KinerjaSayaPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  console.log('ROLE:', session?.user?.role)
   const [kinerja, setKinerja] = useState([])
   const [loading, setLoading] = useState(true)
   const [filterBulan, setFilterBulan] = useState(new Date().getMonth() + 1)
