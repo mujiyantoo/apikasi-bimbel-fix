@@ -1,5 +1,4 @@
 'use client'
-
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
@@ -10,15 +9,14 @@ export function RoleProtector({ allowedRoles, children }) {
 
   useEffect(() => {
     if (status === 'loading') return
-
     if (!session) {
       router.push('/login')
       return
     }
+    const userRole = (session?.user?.role || '').toLowerCase()
+    const allowed = allowedRoles.map(r => r.toLowerCase())
 
-    const userRole = session?.user?.role || 'Admin'
-    
-    if (!allowedRoles.includes(userRole)) {
+    if (!allowed.includes(userRole)) {
       router.push('/dashboard')
       return
     }
@@ -35,8 +33,10 @@ export function RoleProtector({ allowedRoles, children }) {
     )
   }
 
-  const userRole = session?.user?.role || 'Admin'
-  if (!allowedRoles.includes(userRole)) {
+  const userRole = (session?.user?.role || '').toLowerCase()
+  const allowed = allowedRoles.map(r => r.toLowerCase())
+
+  if (!allowed.includes(userRole)) {
     return null
   }
 
