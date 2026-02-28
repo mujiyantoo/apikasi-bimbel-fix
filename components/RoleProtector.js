@@ -7,7 +7,7 @@ export function RoleProtector({ allowedRoles, children }) {
   const { data: session, status } = useSession()
   const router = useRouter()
 
-  useEffect(() => {
+ useEffect(() => {
     if (status === 'loading') return
     if (!session) {
       router.push('/login')
@@ -16,7 +16,15 @@ export function RoleProtector({ allowedRoles, children }) {
     const userRole = (session?.user?.role || '').toLowerCase()
     const allowed = allowedRoles.map(r => r.toLowerCase())
 
+    console.log('userRole:', userRole)
+    console.log('allowed:', allowed)
+    console.log('match:', allowed.includes(userRole))
+
     if (!allowed.includes(userRole)) {
+      router.push('/dashboard')
+      return
+    }
+  }, [session, status, router, allowedRoles])
       router.push('/dashboard')
       return
     }
