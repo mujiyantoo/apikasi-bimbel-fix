@@ -18,7 +18,7 @@ export async function middleware(req: NextRequest) {
 
   // Cek /dashboard/kinerja DULU sebelum /dashboard umum
   if (pathname.startsWith('/dashboard/kinerja')) {
-    if (!['owner', 'admin', 'pegawai'].includes(role)) {
+  if (!['owner','pegawai'].includes(role)) {
       return NextResponse.redirect(new URL('/login', req.url))
     }
     return NextResponse.next()
