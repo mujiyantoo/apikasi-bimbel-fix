@@ -1,7 +1,7 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useEffect } from 'react'
 import { Sidebar } from '@/components/sidebar'
 import { Loader2 } from 'lucide-react'
@@ -9,12 +9,29 @@ import { Loader2 } from 'lucide-react'
 export default function DashboardLayout({ children }) {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login')
+      return
     }
-  }, [status, router])
+
+    if (status === 'authenticated') {
+      const role = (session?.user?.role || '').trim().toLowerCase()
+
+      // Pegawai/Guru HANYA boleh akses absensi dan kinerja
+      if (role === 'pegawai' || role === 'guru') {
+        const allowed =
+          pathname.startsWith('/dashboard/absensi') ||
+          pathname.startsWith('/dashboard/kinerja')
+
+        if (!allowed) {
+          router.replace('/dashboard/absensi')
+        }
+      }
+    }
+  }, [status, session, pathname])
 
   if (status === 'loading') {
     return (
