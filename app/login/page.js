@@ -33,14 +33,14 @@ export default function LoginPage() {
         setError('Email atau password salah')
       } else {
         const session = await getSession()
-        const role = session?.user?.role
+        const role = (session?.user?.role || '').toLowerCase().trim()
 
-        if (role === 'Pegawai') {
-          router.push('/absensi')
+        // Gunakan hard redirect agar cookie JWT terbawa dengan benar di middleware
+        if (role === 'pegawai' || role === 'guru') {
+          window.location.href = '/dashboard/absensi'
         } else {
-          router.push('/dashboard')
+          window.location.href = '/dashboard'
         }
-        router.refresh()
       }
     } catch (err) {
       setError('Terjadi kesalahan. Silakan coba lagi.')
