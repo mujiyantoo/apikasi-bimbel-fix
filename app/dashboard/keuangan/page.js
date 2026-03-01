@@ -14,7 +14,7 @@ import { toast } from 'sonner'
 import {
   Plus, Search, Wallet, Loader2, Receipt, CreditCard,
   TrendingUp, ArrowUpRight, ArrowDownRight, DollarSign,
-  ArrowLeft, CheckCircle
+  ArrowLeft, CheckCircle, MessageCircle
 } from 'lucide-react'
 
 const SPP_TARIF = { SD: 200000, SMP: 250000, SMA: 250000 }
@@ -282,6 +282,46 @@ export default function KeuanganPage() {
   const formatCurrency = (amount) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount)
 
+  // ============================================================
+  // KIRIM WA — ambil noWa dari siswaList berdasarkan siswaId
+  // Format pesan bisa diubah sesuai kebutuhan
+  // ============================================================
+  const handleKirimWA = (item) => {
+    const siswa = siswaList.find(s => s.id === item.siswaId)
+    const noWa = (siswa?.noWa || siswa?.no_wa || siswa?.telepon || siswa?.nomorWa || '').replace(/[^0-9]/g, '')
+
+    if (!noWa) {
+      alert(`Nomor WA siswa "${item.namaSiswa}" belum tersedia di data siswa.`)
+      return
+    }
+
+    // Nomor WA: ganti awalan 0 dengan 62
+    const waNumber = noWa.startsWith('0') ? '62' + noWa.slice(1) : noWa
+
+    // ======================================================
+    // FORMAT PESAN — ubah sesuai format surat yang diinginkan
+    // ======================================================
+    const pesan = `Assalamu'alaikum Wr. Wb.
+
+Yth. Orang Tua/Wali Murid *${item.namaSiswa}*
+
+Kami informasikan bahwa terdapat tagihan yang belum dibayar:
+
+📋 *Rincian Tagihan*
+• Jenis   : ${item.jenis}
+• Periode : ${item.bulan} ${item.tahun}
+• Jumlah  : ${formatCurrency(item.jumlah)}
+• Status  : Belum Lunas
+
+Mohon segera melakukan pembayaran. Terima kasih atas kerjasamanya.
+
+Wassalamu'alaikum Wr. Wb.
+*Bina Insan Nusantara*`
+
+    const url = `https://wa.me/${waNumber}?text=${encodeURIComponent(pesan)}`
+    window.open(url, '_blank')
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -542,6 +582,7 @@ export default function KeuanganPage() {
                       <TableHead>Periode</TableHead>
                       <TableHead>Jumlah</TableHead>
                       <TableHead>Status</TableHead>
+                      {activeTab === 'tagihan' && <TableHead>Kirim WA</TableHead>}
                       {activeTab === 'tagihan' && <TableHead>Aksi</TableHead>}
                     </TableRow>
                   </TableHeader>
@@ -563,6 +604,17 @@ export default function KeuanganPage() {
                             {p.status}
                           </Badge>
                         </TableCell>
+                        {activeTab === 'tagihan' && (
+                          <TableCell>
+                            <button
+                              onClick={() => handleKirimWA(p)}
+                              title={`Kirim tagihan ke WA ${p.namaSiswa}`}
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-500 hover:bg-green-600 active:scale-95 transition-all shadow-sm"
+                            >
+                              <MessageCircle className="w-4 h-4 text-white" />
+                            </button>
+                          </TableCell>
+                        )}
                         {activeTab === 'tagihan' && (
                           <TableCell>
                             <Button size="sm" onClick={() => handleBayar(p)} className="bg-green-600 hover:bg-green-700 text-white h-7 px-3 text-xs">
