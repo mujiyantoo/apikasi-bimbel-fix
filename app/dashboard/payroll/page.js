@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ChevronDown, ChevronUp, RefreshCw, FileDown, DollarSign, Clock, Calendar } from 'lucide-react'
+import { ChevronDown, ChevronUp, RefreshCw, FileDown, DollarSign, Clock, Calendar, Printer } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
@@ -66,78 +66,215 @@ export default function PayrollPage() {
   const totalSesiKeseluruhan = payroll.reduce((sum, item) => sum + item.jumlah_sesi, 0)
   const namaBulan = bulanOptions.find(b => b.value === filterBulan)?.label
 
+  // ================================================================
+  // CETAK KWITANSI PER PENGAJAR — membuka popup print HTML modern
+  // ================================================================
+  const cetakKwitansi = (item, e) => {
+    e.stopPropagation() // jangan toggle expand
+    const now = new Date()
+    const tglCetak = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+    const jamCetak = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+
+    const rowsHTML = item.rincian.map((r, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${new Date(r.tanggal).toLocaleDateString('id-ID')}</td>
+        <td>${r.jam_mulai} - ${r.jam_selesai}</td>
+        <td>${r.menit_mengajar} mnt</td>
+        <td>${r.jenjang}</td>
+        <td>${r.kategori}</td>
+        <td>${r.keterangan || '-'}</td>
+        <td class="nominal">${formatRupiah(r.gaji)}</td>
+      </tr>
+    `).join('')
+
+    const html = `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Kwitansi Honorarium — ${item.pengajar_nama}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f8fafc; color: #1e293b; padding: 24px; }
+    .wrapper { max-width: 860px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); overflow: hidden; }
+    .header { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); color: white; padding: 28px 32px; display: flex; align-items: center; gap: 20px; }
+    .header-logo { width: 56px; height: 56px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; color: #2563eb; flex-shrink: 0; }
+    .header-info h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.3px; }
+    .header-info p { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+    .badge { display: inline-block; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); border-radius: 20px; padding: 3px 12px; font-size: 11px; margin-top: 6px; }
+    .body { padding: 28px 32px; }
+    .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .meta-box { background: #f1f5f9; border-radius: 8px; padding: 14px 16px; }
+    .meta-box label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: #64748b; display: block; margin-bottom: 4px; }
+    .meta-box span { font-size: 14px; font-weight: 700; color: #1e293b; }
+    .meta-box.highlight { background: #eff6ff; border: 1px solid #bfdbfe; }
+    .meta-box.highlight span { color: #2563eb; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead tr { background: #1e3a8a; color: white; }
+    thead th { padding: 10px 10px; text-align: left; font-weight: 600; font-size: 11px; }
+    tbody tr:nth-child(even) { background: #f8fafc; }
+    tbody tr:hover { background: #eff6ff; }
+    tbody td { padding: 9px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+    .nominal { text-align: right; font-weight: 600; color: #16a34a; white-space: nowrap; }
+    tfoot tr { background: #f0fdf4; }
+    tfoot td { padding: 12px 10px; font-weight: 700; border-top: 2px solid #16a34a; }
+    .total-label { color: #15803d; }
+    .total-amount { text-align: right; color: #15803d; font-size: 15px; }
+    .footer { padding: 24px 32px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: flex-end; }
+    .footer-note { font-size: 11px; color: #94a3b8; }
+    .signature { text-align: center; }
+    .signature p { font-size: 11px; color: #64748b; }
+    .signature .name { font-weight: 700; color: #1e293b; font-size: 13px; border-top: 1px solid #cbd5e1; padding-top: 6px; margin-top: 48px; }
+    @media print {
+      body { background: white; padding: 0; }
+      .wrapper { box-shadow: none; border-radius: 0; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <div class="header-logo">BIN</div>
+    <div class="header-info">
+      <h1>Bimbingan Belajar Bina Insan Nusantara</h1>
+      <p>Kwitansi Honorarium Pengajar</p>
+      <span class="badge">Periode: ${namaBulan} ${filterTahun}</span>
+    </div>
+  </div>
+  <div class="body">
+    <div class="meta">
+      <div class="meta-box">
+        <label>Nama Pengajar</label>
+        <span>${item.pengajar_nama}</span>
+      </div>
+      <div class="meta-box">
+        <label>Periode</label>
+        <span>${namaBulan} ${filterTahun}</span>
+      </div>
+      <div class="meta-box">
+        <label>Jumlah Sesi</label>
+        <span>${item.jumlah_sesi} sesi · ${formatJam(item.total_jam)}</span>
+      </div>
+      <div class="meta-box highlight">
+        <label>Total Honorarium</label>
+        <span>${formatRupiah(item.total_gaji)}</span>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Tanggal</th>
+          <th>Jam</th>
+          <th>Durasi</th>
+          <th>Jenjang</th>
+          <th>Kategori</th>
+          <th>Keterangan</th>
+          <th style="text-align:right">Gaji</th>
+        </tr>
+      </thead>
+      <tbody>${rowsHTML}</tbody>
+      <tfoot>
+        <tr>
+          <td colspan="7" class="total-label">Total Honorarium ${item.pengajar_nama}</td>
+          <td class="total-amount">${formatRupiah(item.total_gaji)}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  <div class="footer">
+    <div class="footer-note">
+      <p>Dicetak: ${tglCetak} ${jamCetak} WIB</p>
+      <p>Sistem Manajemen Bimbel BIN Nusantara</p>
+    </div>
+    <div class="signature">
+      <p>Hormat kami,</p>
+      <p class="name">Bag. Keuangan BIN Bimbel</p>
+    </div>
+  </div>
+</div>
+<script>window.onload = () => { window.print(); }<\/script>
+</body></html>`
+
+    const win = window.open('', '_blank', 'width=950,height=700')
+    win.document.write(html)
+    win.document.close()
+  }
+
   const exportToExcel = () => {
-  const dataToExport = []
-  payroll.forEach(item => {
-    dataToExport.push({
-      'Pengajar': item.pengajar_nama,
-      'Tanggal': '',
-      'Jam': '',
-      'Durasi': '',
-      'Jenjang': '',
-      'Kategori': '',
-      'Keterangan': '',
-      'Gaji': item.total_gaji,
-    })
-    item.rincian.forEach(r => {
+    const dataToExport = []
+    payroll.forEach(item => {
       dataToExport.push({
-        'Pengajar': '',
-        'Tanggal': new Date(r.tanggal).toLocaleDateString('id-ID'),
-        'Jam': r.jam_mulai + ' - ' + r.jam_selesai,
-        'Durasi': r.menit_mengajar + ' mnt',
-        'Jenjang': r.jenjang,
-        'Kategori': r.kategori,
-        'Keterangan': r.keterangan || '-',
-        'Gaji': r.gaji,
+        'Pengajar': item.pengajar_nama,
+        'Tanggal': '',
+        'Jam': '',
+        'Durasi': '',
+        'Jenjang': '',
+        'Kategori': '',
+        'Keterangan': '',
+        'Gaji': item.total_gaji,
+      })
+      item.rincian.forEach(r => {
+        dataToExport.push({
+          'Pengajar': '',
+          'Tanggal': new Date(r.tanggal).toLocaleDateString('id-ID'),
+          'Jam': r.jam_mulai + ' - ' + r.jam_selesai,
+          'Durasi': r.menit_mengajar + ' mnt',
+          'Jenjang': r.jenjang,
+          'Kategori': r.kategori,
+          'Keterangan': r.keterangan || '-',
+          'Gaji': r.gaji,
+        })
       })
     })
-  })
-  const ws = XLSX.utils.json_to_sheet(dataToExport)
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Payroll')
-  XLSX.writeFile(wb, 'Payroll_' + namaBulan + '_' + filterTahun + '.xlsx')
-}
+    const ws = XLSX.utils.json_to_sheet(dataToExport)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Payroll')
+    XLSX.writeFile(wb, 'Payroll_' + namaBulan + '_' + filterTahun + '.xlsx')
+  }
   const exportToPDF = () => {
-  const doc = new jsPDF({ orientation: 'landscape' })
-  doc.setFontSize(16)
-  doc.text('LAPORAN PAYROLL PENGAJAR BIN BIMBEL CABANG PANUMBANGAN', 14, 15)
-  doc.setFontSize(10)
-  doc.text('Periode: ' + namaBulan + ' ' + filterTahun, 14, 22)
+    const doc = new jsPDF({ orientation: 'landscape' })
+    doc.setFontSize(16)
+    doc.text('LAPORAN PAYROLL PENGAJAR BIN BIMBEL CABANG PANUMBANGAN', 14, 15)
+    doc.setFontSize(10)
+    doc.text('Periode: ' + namaBulan + ' ' + filterTahun, 14, 22)
 
-  const tableData = []
-  payroll.forEach(item => {
-    tableData.push([
-      { content: item.pengajar_nama, colSpan: 7, styles: { fontStyle: 'bold', fillColor: [239, 246, 255] } }
-    ])
-    item.rincian.forEach(r => {
+    const tableData = []
+    payroll.forEach(item => {
       tableData.push([
-        new Date(r.tanggal).toLocaleDateString('id-ID'),
-        r.jam_mulai + ' - ' + r.jam_selesai,
-        r.menit_mengajar + ' mnt',
-        r.jenjang,
-        r.kategori,
-        r.keterangan || '-',
-        formatRupiah(r.gaji),
+        { content: item.pengajar_nama, colSpan: 7, styles: { fontStyle: 'bold', fillColor: [239, 246, 255] } }
+      ])
+      item.rincian.forEach(r => {
+        tableData.push([
+          new Date(r.tanggal).toLocaleDateString('id-ID'),
+          r.jam_mulai + ' - ' + r.jam_selesai,
+          r.menit_mengajar + ' mnt',
+          r.jenjang,
+          r.kategori,
+          r.keterangan || '-',
+          formatRupiah(r.gaji),
+        ])
+      })
+      tableData.push([
+        { content: 'Subtotal ' + item.pengajar_nama, colSpan: 6, styles: { fontStyle: 'bold', fillColor: [240, 253, 244] } },
+        { content: formatRupiah(item.total_gaji), styles: { fontStyle: 'bold', textColor: [22, 163, 74], fillColor: [240, 253, 244] } }
       ])
     })
-    tableData.push([
-      { content: 'Subtotal ' + item.pengajar_nama, colSpan: 6, styles: { fontStyle: 'bold', fillColor: [240, 253, 244] } },
-      { content: formatRupiah(item.total_gaji), styles: { fontStyle: 'bold', textColor: [22, 163, 74], fillColor: [240, 253, 244] } }
-    ])
-  })
 
-  doc.autoTable({
-    startY: 28,
-    head: [['Tanggal', 'Jam', 'Durasi', 'Jenjang', 'Kategori', 'Keterangan', 'Gaji']],
-    body: tableData,
-    foot: [['TOTAL KESELURUHAN', '', '', '', '', '', formatRupiah(totalKeseluruhan)]],
-    theme: 'grid',
-    headStyles: { fillColor: [59, 130, 246] },
-    footStyles: { fillColor: [34, 197, 94], fontStyle: 'bold' },
-    styles: { fontSize: 8 }
-  })
-  doc.save('Payroll_' + namaBulan + '_' + filterTahun + '.pdf')
-}
+    doc.autoTable({
+      startY: 28,
+      head: [['Tanggal', 'Jam', 'Durasi', 'Jenjang', 'Kategori', 'Keterangan', 'Gaji']],
+      body: tableData,
+      foot: [['TOTAL KESELURUHAN', '', '', '', '', '', formatRupiah(totalKeseluruhan)]],
+      theme: 'grid',
+      headStyles: { fillColor: [59, 130, 246] },
+      footStyles: { fillColor: [34, 197, 94], fontStyle: 'bold' },
+      styles: { fontSize: 8 }
+    })
+    doc.save('Payroll_' + namaBulan + '_' + filterTahun + '.pdf')
+  }
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6 pt-14 md:pt-6">
@@ -230,7 +367,8 @@ export default function PayrollPage() {
               {/* Header tabel - desktop only */}
               <div className="hidden md:grid md:grid-cols-12 text-xs font-semibold text-gray-500 px-4 pb-1 border-b">
                 <div className="col-span-1">#</div>
-                <div className="col-span-5">Nama Pengajar</div>
+                <div className="col-span-4">Nama Pengajar</div>
+                <div className="col-span-1 text-center"></div>
                 <div className="col-span-2 text-center">Sesi</div>
                 <div className="col-span-2 text-center">Jam</div>
                 <div className="col-span-2 text-right">Total Gaji</div>
@@ -263,11 +401,22 @@ export default function PayrollPage() {
                     {/* Desktop layout */}
                     <div className="hidden md:grid md:grid-cols-12 items-center">
                       <div className="col-span-1 text-sm font-bold text-gray-400">{idx + 1}</div>
-                      <div className="col-span-5 flex items-center gap-3">
+                      <div className="col-span-4 flex items-center gap-3">
                         <div className="w-9 h-9 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0">
                           {item.pengajar_nama?.charAt(0)?.toUpperCase()}
                         </div>
                         <p className="font-semibold text-gray-900">{item.pengajar_nama}</p>
+                      </div>
+                      {/* Tombol Cetak Kwitansi */}
+                      <div className="col-span-1 flex justify-center">
+                        <button
+                          onClick={(e) => cetakKwitansi(item, e)}
+                          title="Cetak Kwitansi"
+                          className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-600 text-xs font-medium transition-all active:scale-95"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          <span>Cetak</span>
+                        </button>
                       </div>
                       <div className="col-span-2 text-center text-sm text-gray-600">{item.jumlah_sesi} sesi</div>
                       <div className="col-span-2 text-center text-sm text-gray-600">{formatJam(item.total_jam)}</div>
