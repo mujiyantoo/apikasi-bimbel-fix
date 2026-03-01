@@ -299,24 +299,47 @@ export default function KeuanganPage() {
     const waNumber = noWa.startsWith('0') ? '62' + noWa.slice(1) : noWa
 
     // ======================================================
-    // FORMAT PESAN — ubah sesuai format surat yang diinginkan
+    // FORMAT SURAT TAGIHAN RESMI BIN BIMBEL
     // ======================================================
-    const pesan = `Assalamu'alaikum Wr. Wb.
+    const now = new Date()
+    const tglSekarang = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+    const jamSekarang = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
 
-Yth. Orang Tua/Wali Murid *${item.namaSiswa}*
+    const pesan = `*Bimbingan Belajar Bina Insan Nusantara*
+*Informasi Administrasi Bimbel*
+==========================
+Yth. Bapak/Ibu Wali Murid,
+Assalamualaikum Warahmatullahi Wabarakatuh,
 
-Kami informasikan bahwa terdapat tagihan yang belum dibayar:
+Bapak/Ibu orang tua wali siswa BIN Bimbel, kami informasikan sehubungan telah berakhirnya kegiatan belajar mengajar untuk bulan ${item.bulan} ${item.tahun}.
 
-📋 *Rincian Tagihan*
-• Jenis   : ${item.jenis}
-• Periode : ${item.bulan} ${item.tahun}
-• Jumlah  : ${formatCurrency(item.jumlah)}
-• Status  : Belum Lunas
+Oleh karena itu, bagi yang masih ada kewajiban administrasi pendidikan dapat segera melunasinya dan bagi yang sudah kami mengucapkan terima kasih🙏🏼.
 
-Mohon segera melakukan pembayaran. Terima kasih atas kerjasamanya.
+Berdasarkan data pada sistem keuangan hingga ${tglSekarang} Pukul: ${jamSekarang} WIB, kami sampaikan data tagihan hingga Bulan ${item.bulan} ${item.tahun}:
 
-Wassalamu'alaikum Wr. Wb.
-*Bina Insan Nusantara*`
+*Siswa:*
+NIS      : ${siswa?.nis || '-'}
+Nama  : ${item.namaSiswa}
+Kelas   : ${siswa?.kelas || '-'}
+
+Sebesar *${formatCurrency(item.jumlah)}*
+----------------------------------
+Pembayaran bisa dilakukan melalui transfer ke nomor rekening berikut:
+- BRI           : 4454 0101 5235 508 - Nia Kurniawati
+- BCA          : 6235 0636 91           - Nia Kurniawati
+- BNI           : 1629 8263 12           - Nia Kurniawati
+- BJB           : 0081 9531 7110 0    - Mujiyanto
+- Mandiri    : 1770 0208 9202 9    - Mujiyanto
+- Dana         : 0878 7107 9085       - Nia Kurniawati
+- Gopay       : 0878 7107 9085       - Nia Kurniawati
+- Shopee Pay : 0878 7107 9085    - Nia Kurniawati
+
+Besar harapan kami Bapak/Ibu dapat menyelesaikan kewajiban administrasi. Terima kasih atas kerjasama dan perhatiannya😊.
+
+*Informasi Hubungi:*
+☎️ Nia Kurniawati. ST. : 0878 7107 9085
+☎️ Slamet Irawan.         : 0895 4028 47670`
+
 
     const url = `https://wa.me/${waNumber}?text=${encodeURIComponent(pesan)}`
     window.open(url, '_blank')
