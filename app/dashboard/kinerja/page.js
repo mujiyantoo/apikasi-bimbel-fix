@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { RefreshCw, DollarSign, Loader2, Plus, X } from 'lucide-react'
-import { RoleProtector } from '@/components/RoleProtector'
+// RoleProtector dihapus - proteksi role sudah ditangani oleh middleware.js
 
 const bulanOptions = [
   { value: 1, label: 'Januari' }, { value: 2, label: 'Februari' },
@@ -158,7 +158,7 @@ export default function KinerjaSayaPage() {
   }
 
   return (
-    <RoleProtector allowedRoles={['Owner', 'Pegawai', 'Guru']}>
+    <>
       <div className="p-4 max-w-4xl mx-auto space-y-4">
 
         <div className="flex items-center justify-between pt-1">
@@ -362,6 +362,6 @@ export default function KinerjaSayaPage() {
           </CardContent>
         </Card>
       </div>
-    </RoleProtector>
+    </>
   )
 }
