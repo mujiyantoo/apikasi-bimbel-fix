@@ -158,7 +158,7 @@ export default function KinerjaSayaPage() {
   }
 
   return (
-    <RoleProtector allowedRoles={['Owner', 'Pegawai']}>
+    <RoleProtector allowedRoles={['Owner', 'Pegawai', 'Guru']}>
       <div className="p-4 max-w-4xl mx-auto space-y-4">
 
         <div className="flex items-center justify-between pt-1">
@@ -335,8 +335,8 @@ export default function KinerjaSayaPage() {
                           <span className={
                             'px-1.5 py-0.5 rounded text-xs font-medium ' +
                             (item.kategori === 'Reguler' ? 'bg-blue-100 text-blue-700' :
-                             item.kategori === 'Piket' ? 'bg-purple-100 text-purple-700' :
-                             'bg-orange-100 text-orange-700')
+                              item.kategori === 'Piket' ? 'bg-purple-100 text-purple-700' :
+                                'bg-orange-100 text-orange-700')
                           }>
                             {item.kategori}
                           </span>

@@ -48,9 +48,9 @@ export async function middleware(req) {
   }
 
   // ================================================================
-  // ROLE: Pegawai — HANYA boleh akses /dashboard/absensi dan /dashboard/kinerja
+  // ROLE: Pegawai / Guru — HANYA boleh akses /dashboard/absensi dan /dashboard/kinerja
   // ================================================================
-  if (role === 'Pegawai') {
+  if (role === 'Pegawai' || role === 'Guru') {
     if (pathname.startsWith('/dashboard')) {
       const pegawaiAllowed =
         pathname.startsWith('/dashboard/absensi') ||
