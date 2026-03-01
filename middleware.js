@@ -13,6 +13,8 @@ export async function middleware(req) {
   if (pathname.startsWith('/login') ||
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/absensi') ||
+    pathname.startsWith('/dashboard/absensi') ||
+    pathname.startsWith('/dashboard/kinerja') ||
     pathname === '/') {
     return NextResponse.next()
   }

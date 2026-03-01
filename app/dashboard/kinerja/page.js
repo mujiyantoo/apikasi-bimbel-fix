@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { signIn, useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -45,9 +45,24 @@ export default function KinerjaSayaPage() {
   const [submitLoading, setSubmitLoading] = useState(false)
   const [pesan, setPesan] = useState(null)
   const [pegawaiSaya, setPegawaiSaya] = useState(null)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loginLoading, setLoginLoading] = useState(false)
+  const [loginError, setLoginError] = useState('')
+
+  const handleLogin = async (e) => {
+    e.preventDefault()
+    setLoginLoading(true)
+    setLoginError('')
+    const result = await signIn('credentials', { email, password, redirect: false })
+    if (result?.error) setLoginError('Email atau password salah')
+    setLoginLoading(false)
+  }
 
   useEffect(() => {
-    if (status === 'unauthenticated') router.push('/absensi')
+    if (status === 'unauthenticated') {
+      // Jangan redirect - biarkan login form yang muncul
+    }
   }, [status])
 
   useEffect(() => {
@@ -149,10 +164,56 @@ export default function KinerjaSayaPage() {
   const totalGaji = kinerja.reduce((sum, item) => sum + (item.gaji || 0), 0)
   const previewGaji = hitungGaji(form.jenjang, form.kategori, form.jam_mulai, form.jam_selesai)
 
-  if (status === 'loading') {
+  // Tampilkan login form jika belum login
+  if (!session) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-700 px-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm">
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <DollarSign className="w-8 h-8 text-blue-600" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">Kinerja Saya</h1>
+            <p className="text-gray-500 text-sm mt-1">Bina Insan Nusantara</p>
+          </div>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="email@bimbel.com"
+                required
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="••••••••"
+                required
+              />
+            </div>
+            {loginError && (
+              <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg">
+                {loginError}
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={loginLoading}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              {loginLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {loginLoading ? 'Masuk...' : 'Masuk'}
+            </button>
+          </form>
+        </div>
       </div>
     )
   }
