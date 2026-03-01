@@ -12,7 +12,7 @@ import { useEffect } from 'react'
  *   - Admin  : akses semua KECUALI laporan, pimpinan, akuntansi
  *   - Pegawai: akses HANYA absensi dan kinerja
  */
-export default function RoleProtector({ children, allowedRoles }) {
+export function RoleProtector({ children, allowedRoles }) {
   const { data: session, status } = useSession()
   const router = useRouter()
 
