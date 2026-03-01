@@ -22,19 +22,19 @@ export async function middleware(req) {
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
-  const role = token.role || ''
+  const role = (token.role || '').trim().toLowerCase()
 
   // ================================================================
   // ROLE: Owner — boleh akses SEMUA halaman dashboard
   // ================================================================
-  if (role === 'Owner') {
+  if (role === 'owner') {
     return NextResponse.next()
   }
 
   // ================================================================
   // ROLE: Admin — boleh semua KECUALI halaman khusus Owner
   // ================================================================
-  if (role === 'Admin') {
+  if (role === 'admin') {
     const adminBlockedPaths = [
       '/dashboard/laporan',
       '/dashboard/pimpinan',
@@ -50,7 +50,7 @@ export async function middleware(req) {
   // ================================================================
   // ROLE: Pegawai / Guru — HANYA boleh akses /dashboard/absensi dan /dashboard/kinerja
   // ================================================================
-  if (role === 'Pegawai' || role === 'Guru') {
+  if (role === 'pegawai' || role === 'guru') {
     if (pathname.startsWith('/dashboard')) {
       const pegawaiAllowed =
         pathname.startsWith('/dashboard/absensi') ||

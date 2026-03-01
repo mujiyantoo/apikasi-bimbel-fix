@@ -49,9 +49,11 @@ export function Sidebar() {
   const pathname = usePathname()
   const { data: session } = useSession()
   const [isOpen, setIsOpen] = useState(false)
-  const userRole = session?.user?.role || 'Admin'
+  const userRole = (session?.user?.role || 'Admin').trim()
 
-  const filteredMenu = menuItems.filter(item => item.roles.includes(userRole))
+  const filteredMenu = menuItems.filter(item =>
+    item.roles.map(r => r.toLowerCase()).includes(userRole.toLowerCase())
+  )
 
   return (
     <>
