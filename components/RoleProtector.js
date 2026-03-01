@@ -1,48 +1,56 @@
 'use client'
+
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
-export function RoleProtector({ allowedRoles, children }) {
+/**
+ * RoleProtector - komponen client-side untuk proteksi halaman berdasarkan role
+ * 
+ * Aturan:
+ *   - Owner  : akses semua halaman
+ *   - Admin  : akses semua KECUALI laporan, pimpinan, akuntansi
+ *   - Pegawai: akses HANYA absensi dan kinerja
+ */
+export default function RoleProtector({ children, allowedRoles }) {
   const { data: session, status } = useSession()
   const router = useRouter()
 
   useEffect(() => {
     if (status === 'loading') return
+
     if (!session) {
-      router.push('/login')
+      router.replace('/login')
       return
     }
-    const userRole = (session?.user?.role || '').toLowerCase()
-    const allowed = allowedRoles.map(r => r.toLowerCase())
 
-    console.log('userRole:', userRole)
-    console.log('allowed:', allowed)
-    console.log('match:', allowed.includes(userRole))
+    const role = session?.user?.role || ''
 
-    if (!allowed.includes(userRole)) {
-      router.push('/dashboard')
-      return
+    if (allowedRoles && allowedRoles.length > 0) {
+      if (!allowedRoles.includes(role)) {
+        // Arahkan ke halaman default sesuai role
+        if (role === 'Pegawai') {
+          router.replace('/dashboard/absensi')
+        } else {
+          router.replace('/dashboard')
+        }
+      }
     }
-  }, [session, status, router, allowedRoles])
+  }, [session, status, allowedRoles, router])
 
   if (status === 'loading') {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Memuat...</p>
-        </div>
-      </div>
-    )
+    return <div>Memuat...</div>
   }
 
-  const userRole = (session?.user?.role || '').toLowerCase()
-  const allowed = allowedRoles.map(r => r.toLowerCase())
+  const role = session?.user?.role || ''
 
-  if (!allowed.includes(userRole)) {
+  // Jika tidak ada session, jangan render children
+  if (!session) return null
+
+  // Jika ada pembatasan role dan user tidak punya akses, jangan render
+  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(role)) {
     return null
   }
 
-  return <>{children}</>
+  return children
 }
