@@ -225,14 +225,17 @@ export default function KeuanganPage() {
 
   const filteredData = useMemo(() => {
     let data = pembayaran
+    // Set ID siswa yang sedang Cuti untuk filter
+    const siswaCutiIds = new Set(siswaList.filter(s => s.status === 'Cuti').map(s => s.id))
     if (activeTab === 'spp') {
       data = pembayaran.filter(p => p.jenis !== 'Pengeluaran' && p.status === 'lunas')
     } else if (activeTab === 'tagihan') {
-      // ✅ Hanya tampilkan tagihan pending untuk bulan (n-1)
+      // ✅ Hanya tampilkan tagihan pending untuk bulan (n-1), exclude siswa Cuti
       data = pembayaran.filter(p =>
         p.status === 'pending' &&
         p.bulan?.toLowerCase() === bulanTagihan.toLowerCase() &&
-        p.tahun === tahunTagihan
+        p.tahun === tahunTagihan &&
+        !siswaCutiIds.has(p.siswaId) // ❌ Hilangkan siswa Cuti
       )
     } else if (activeTab === 'pengeluaran') {
       data = pembayaran.filter(p => p.jenis === 'Pengeluaran')
@@ -241,25 +244,27 @@ export default function KeuanganPage() {
       p.namaSiswa?.toLowerCase().includes(search.toLowerCase()) ||
       p.jenis?.toLowerCase().includes(search.toLowerCase())
     )
-  }, [pembayaran, activeTab, search])
+  }, [pembayaran, activeTab, search, siswaList])
 
   const stats = useMemo(() => {
+    const siswaCutiIds = new Set(siswaList.filter(s => s.status === 'Cuti').map(s => s.id))
     const income = pembayaran
       .filter(p => p.jenis !== 'Pengeluaran' && p.status === 'lunas')
       .reduce((acc, curr) => acc + (curr.jumlah || 0), 0)
     const expense = pembayaran
       .filter(p => p.jenis === 'Pengeluaran')
       .reduce((acc, curr) => acc + (curr.jumlah || 0), 0)
-    // ✅ Pending hanya untuk bulan (n-1)
+    // ✅ Pending hanya untuk bulan (n-1) dan bukan siswa Cuti
     const pending = pembayaran
       .filter(p =>
         p.status === 'pending' &&
         p.bulan?.toLowerCase() === bulanTagihan.toLowerCase() &&
-        p.tahun === tahunTagihan
+        p.tahun === tahunTagihan &&
+        !siswaCutiIds.has(p.siswaId) // ❌ Exclude siswa Cuti
       )
       .reduce((acc, curr) => acc + (curr.jumlah || 0), 0)
     return { income, expense, pending, net: income - expense }
-  }, [pembayaran])
+  }, [pembayaran, siswaList])
 
   const handleOpenDialog = () => {
     setFormData({
@@ -591,11 +596,13 @@ Bag. Keuangan BIN Bimbel 😇`
             <CardDescription>
               {formatCurrency(stats.pending)}
               <span className="ml-2 text-emerald-600 font-semibold">
-                ({pembayaran.filter(p =>
-                  p.status === 'pending' &&
-                  p.bulan?.toLowerCase() === bulanTagihan.toLowerCase() &&
-                  p.tahun === tahunTagihan
-                ).length} siswa)
+                ({pembayaran.filter(p => {
+                  const isCuti = siswaList.some(s => s.id === p.siswaId && s.status === 'Cuti')
+                  return p.status === 'pending' &&
+                    p.bulan?.toLowerCase() === bulanTagihan.toLowerCase() &&
+                    p.tahun === tahunTagihan &&
+                    !isCuti
+                }).length} siswa)
               </span>
             </CardDescription>
           </CardHeader>
