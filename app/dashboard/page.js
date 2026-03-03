@@ -15,7 +15,12 @@ import {
   ArrowUpRight,
   RefreshCw,
   GraduationCap,
-  DollarSign
+  DollarSign,
+  CheckCircle2,
+  XCircle,
+  MapPin,
+  LogIn,
+  LogOut
 } from 'lucide-react'
 
 export default function DashboardPage() {
@@ -28,16 +33,17 @@ export default function DashboardPage() {
     recentActivities: []
   })
   const [loading, setLoading] = useState(true)
+  const [absensiData, setAbsensiData] = useState([])
+  const [pegawaiData, setPegawaiData] = useState([])
+  const [loadingAbsensi, setLoadingAbsensi] = useState(true)
+
+  const isAdminOrOwner = session?.user?.role === 'Admin' || session?.user?.role === 'Owner'
 
   const fetchStats = async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/dashboard/stats')
-
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`)
-      }
-
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
       const data = await res.json()
       setStats(data)
     } catch (error) {
@@ -47,11 +53,36 @@ export default function DashboardPage() {
     }
   }
 
+  const fetchAbsensiDashboard = async () => {
+    setLoadingAbsensi(true)
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const [absensiRes, pegawaiRes] = await Promise.all([
+        fetch(`/api/absensi?tanggal=${today}`),
+        fetch('/api/pegawai')
+      ])
+      const [absensiList, pegawaiList] = await Promise.all([
+        absensiRes.json(),
+        pegawaiRes.json()
+      ])
+      setAbsensiData(Array.isArray(absensiList) ? absensiList : [])
+      setPegawaiData(Array.isArray(pegawaiList) ? pegawaiList : [])
+    } catch (error) {
+      console.error('Error fetching absensi dashboard:', error)
+    } finally {
+      setLoadingAbsensi(false)
+    }
+  }
+
+  const handleRefreshAll = () => {
+    fetchStats()
+    fetchAbsensiDashboard()
+  }
+
   useEffect(() => {
     fetchStats()
-
-    // Auto-refresh when window gains focus (e.g., after returning from siswa page)
-    const handleFocus = () => fetchStats()
+    fetchAbsensiDashboard()
+    const handleFocus = () => { fetchStats(); fetchAbsensiDashboard() }
     window.addEventListener('focus', handleFocus)
     return () => window.removeEventListener('focus', handleFocus)
   }, [])
@@ -112,12 +143,12 @@ export default function DashboardPage() {
           </p>
         </div>
         <Button
-          onClick={fetchStats}
+          onClick={handleRefreshAll}
           variant="outline"
           className="self-start"
-          disabled={loading}
+          disabled={loading || loadingAbsensi}
         >
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 mr-2 ${(loading || loadingAbsensi) ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </div>
@@ -248,6 +279,124 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Absensi Hari Ini — hanya untuk Admin & Owner */}
+      {isAdminOrOwner && (
+        <Card className="border-0 shadow-md">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                  Absensi Pegawai Hari Ini
+                </CardTitle>
+                <CardDescription>
+                  {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                </CardDescription>
+              </div>
+              <div className="flex gap-2 text-xs">
+                <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                  ✅ {absensiData.filter(a => a.waktu_masuk).length} Hadir
+                </span>
+                <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">
+                  ❌ {pegawaiData.length - absensiData.filter(a => a.waktu_masuk).length} Belum
+                </span>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loadingAbsensi ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="flex items-center space-x-3 animate-pulse">
+                    <div className="w-8 h-8 bg-gray-200 rounded-full" />
+                    <div className="flex-1 space-y-1">
+                      <div className="h-4 bg-gray-200 rounded w-1/3" />
+                      <div className="h-3 bg-gray-200 rounded w-1/4" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : pegawaiData.length === 0 ? (
+              <div className="text-center py-6 text-gray-400">
+                <Users className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+                <p className="text-sm">Belum ada data pegawai</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      <th className="text-left py-2 px-3 text-gray-500 font-medium">Nama Pegawai</th>
+                      <th className="text-left py-2 px-3 text-gray-500 font-medium">Jabatan</th>
+                      <th className="text-center py-2 px-3 text-gray-500 font-medium">Jam Masuk</th>
+                      <th className="text-center py-2 px-3 text-gray-500 font-medium">Jam Keluar</th>
+                      <th className="text-center py-2 px-3 text-gray-500 font-medium">Jarak</th>
+                      <th className="text-center py-2 px-3 text-gray-500 font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {pegawaiData.map((pegawai) => {
+                      const absen = absensiData.find(a => a.pegawai_id === pegawai.id || a.pegawai_id === pegawai._id?.toString())
+                      const sudahMasuk = !!absen?.waktu_masuk
+                      const sudahKeluar = !!absen?.waktu_keluar
+                      return (
+                        <tr key={pegawai.id || pegawai._id} className="hover:bg-gray-50 transition-colors">
+                          <td className="py-2.5 px-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs flex-shrink-0">
+                                {pegawai.nama?.charAt(0)}
+                              </div>
+                              <span className="font-medium text-gray-900">{pegawai.nama}</span>
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3 text-gray-500">{pegawai.jabatan || '-'}</td>
+                          <td className="py-2.5 px-3 text-center">
+                            {sudahMasuk ? (
+                              <span className="text-green-600 font-medium">
+                                {new Date(absen.waktu_masuk).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            ) : <span className="text-gray-300">--:--</span>}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            {sudahKeluar ? (
+                              <span className="text-blue-600 font-medium">
+                                {new Date(absen.waktu_keluar).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            ) : <span className="text-gray-300">--:--</span>}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            {absen?.jarak_masuk ? (
+                              <span className="text-xs text-gray-500 flex items-center justify-center gap-1">
+                                <MapPin className="w-3 h-3" />{absen.jarak_masuk}m
+                              </span>
+                            ) : <span className="text-gray-300">-</span>}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            {sudahKeluar ? (
+                              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">
+                                <CheckCircle2 className="w-3 h-3" /> Selesai
+                              </span>
+                            ) : sudahMasuk ? (
+                              <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full font-medium">
+                                <LogIn className="w-3 h-3" /> Hadir
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full font-medium">
+                                <XCircle className="w-3 h-3" /> Belum Hadir
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Info Card */}
       <Card className="border-0 shadow-md bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
