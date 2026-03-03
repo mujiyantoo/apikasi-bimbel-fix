@@ -118,7 +118,7 @@ export default function KeuanganPage() {
       const pendingHarusDihapus = pembayaranData.filter(p =>
         p.status === 'pending' &&
         p.jenis === 'SPP' &&
-        p.bulan === bulanTagihan &&
+        p.bulan?.toLowerCase() === bulanTagihan.toLowerCase() &&
         p.tahun === tahunTagihan &&
         siswaCutiIds.has(p.siswaId)
       )
@@ -137,7 +137,7 @@ export default function KeuanganPage() {
       const tagihanSalahBulan = pembayaranData.filter(p =>
         p.status === 'pending' &&
         p.jenis === 'SPP' &&
-        p.bulan === bulanSekarang &&
+        p.bulan?.toLowerCase() === bulanSekarang.toLowerCase() &&
         p.tahun === tahunSekarang
       )
 
@@ -153,7 +153,7 @@ export default function KeuanganPage() {
       // ✅ Buat pending hanya untuk siswa Aktif yang belum punya SPP bulan lalu (n-1)
       const sudahAdaSPP = new Set(
         pembayaranData
-          .filter(p => p.jenis === 'SPP' && p.bulan === bulanTagihan && p.tahun === tahunTagihan)
+          .filter(p => p.jenis === 'SPP' && p.bulan?.toLowerCase() === bulanTagihan.toLowerCase() && p.tahun === tahunTagihan)
           .map(p => p.siswaId)
       )
 
