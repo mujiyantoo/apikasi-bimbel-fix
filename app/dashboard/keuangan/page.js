@@ -194,6 +194,19 @@ export default function KeuanganPage() {
 
   useEffect(() => {
     const init = async () => {
+      // ✅ LANGKAH 1: Hapus tagihan SPP pending bulan berjalan (n) dari server terlebih dahulu
+      // Ini memastikan tidak ada tagihan bulan ini yang muncul di daftar pending
+      try {
+        const cleanupRes = await fetch('/api/pembayaran?action=cleanup', { method: 'DELETE' })
+        const cleanupData = await cleanupRes.json()
+        if (cleanupData.deletedCount > 0) {
+          toast.info(`${cleanupData.deletedCount} tagihan ${cleanupData.bulan} (bulan ini) telah dihapus otomatis`)
+        }
+      } catch (e) {
+        console.error('Cleanup error:', e)
+      }
+
+      // ✅ LANGKAH 2: Ambil data siswa dan pembayaran (sudah bersih)
       const [siswaData, pembayaranRes] = await Promise.all([
         fetchSiswa(),
         fetch('/api/pembayaran').then(r => r.json()).catch(() => [])
@@ -201,6 +214,8 @@ export default function KeuanganPage() {
       const pembayaranData = Array.isArray(pembayaranRes) ? pembayaranRes : []
       setPembayaran(pembayaranData)
       setLoading(false)
+
+      // ✅ LANGKAH 3: Generate tagihan bulan lalu (n-1) jika belum ada dan sudah lewat tgl 1
       if (siswaData.length > 0) {
         await generateSPPBulanan(siswaData, pembayaranData)
       }

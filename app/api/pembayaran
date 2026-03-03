@@ -4,6 +4,11 @@ import { ObjectId } from 'mongodb'
 
 export const dynamic = 'force-dynamic'
 
+const bulanOptions = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+]
+
 // ✅ Helper: cari query by _id (ObjectId) atau id (UUID string)
 function buildQuery(id) {
   try {
@@ -123,29 +128,50 @@ export async function PUT(request) {
 }
 
 // ============================================
-// DELETE /api/pembayaran?id=xxx — hapus data
+// DELETE /api/pembayaran
+//  - ?id=xxx          → hapus satu record
+//  - ?action=cleanup  → hapus semua SPP pending BULAN BERJALAN (n)
 // ✅ Support ObjectId dan UUID
 // ============================================
 export async function DELETE(request) {
   try {
     const { searchParams } = new URL(request.url)
+    const action = searchParams.get('action')
     const id = searchParams.get('id')
-
-    if (!id) {
-      return NextResponse.json({ error: 'ID tidak ditemukan' }, { status: 400 })
-    }
 
     const connection = await getMongoConnection()
     if (!connection) {
-      return NextResponse.json(
-        { error: 'Database tidak tersedia' },
-        { status: 503 }
-      )
+      return NextResponse.json({ error: 'Database tidak tersedia' }, { status: 503 })
     }
 
     const { db } = connection
 
-    // ✅ Coba ObjectId dulu, fallback ke UUID string
+    // ✅ MODE: hapus semua tagihan bulan berjalan (n) — dipanggil dari init halaman keuangan
+    if (action === 'cleanup') {
+      const now = new Date()
+      const bulanBerjalan = bulanOptions[now.getMonth()]
+      const tahunBerjalan = now.getFullYear().toString()
+
+      const result = await db.collection('pembayaran').deleteMany({
+        jenis: 'SPP',
+        status: 'pending',
+        bulan: { $regex: new RegExp(`^${bulanBerjalan}$`, 'i') },
+        tahun: tahunBerjalan
+      })
+
+      return NextResponse.json({
+        message: `Berhasil menghapus ${result.deletedCount} tagihan SPP pending bulan ${bulanBerjalan} ${tahunBerjalan}`,
+        deletedCount: result.deletedCount,
+        bulan: bulanBerjalan,
+        tahun: tahunBerjalan
+      })
+    }
+
+    // ✅ MODE: hapus satu record by id
+    if (!id) {
+      return NextResponse.json({ error: 'ID atau action tidak ditemukan' }, { status: 400 })
+    }
+
     const query = buildQuery(id)
     const result = await db.collection('pembayaran').deleteOne(query)
 
