@@ -132,6 +132,24 @@ export default function KeuanganPage() {
         toast.info(`${pendingHarusDihapus.length} tagihan SPP siswa Cuti dihapus otomatis`)
       }
 
+      // ✅ Hapus pending SPP bulan berjalan (n) jika ada, karena aturan baru adalah n-1
+      // Contoh: Jika sekarang Maret, maka tagihan Maret belum boleh ada (terbit April nanti)
+      const tagihanSalahBulan = pembayaranData.filter(p =>
+        p.status === 'pending' &&
+        p.jenis === 'SPP' &&
+        p.bulan === bulanSekarang &&
+        p.tahun === tahunSekarang
+      )
+
+      if (tagihanSalahBulan.length > 0) {
+        await Promise.all(
+          tagihanSalahBulan.map(p =>
+            fetch(`/api/pembayaran?id=${p.id}`, { method: 'DELETE' })
+          )
+        )
+        toast.info(`${tagihanSalahBulan.length} tagihan bulan berjalan dihapus (menyesuaikan aturan n-1)`)
+      }
+
       // ✅ Buat pending hanya untuk siswa Aktif yang belum punya SPP bulan lalu (n-1)
       const sudahAdaSPP = new Set(
         pembayaranData
