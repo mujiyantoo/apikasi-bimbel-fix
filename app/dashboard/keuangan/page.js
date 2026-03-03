@@ -101,11 +101,6 @@ export default function KeuanganPage() {
   // ✅ Hapus pending SPP siswa yang sedang Cuti
   // =============================================
   const generateSPPBulanan = async (siswaData, pembayaranData) => {
-    // ✅ Hanya generate jika sudah melewati tanggal 1 (artinya mulai tanggal 2 ke atas)
-    if (tanggalSekarang <= 1) {
-      return
-    }
-
     setGenerating(true)
     try {
       // Pisahkan siswa aktif dan cuti
@@ -114,7 +109,7 @@ export default function KeuanganPage() {
         siswaData.filter(s => s.status === 'Cuti').map(s => s.id)
       )
 
-      // ✅ Hapus pending SPP bulan lalu untuk siswa yang Cuti
+      // ✅ Hapus pending SPP bulan lalu untuk siswa yang Cuti (SELALU DIJALANKAN)
       const pendingHarusDihapus = pembayaranData.filter(p =>
         p.status === 'pending' &&
         p.jenis === 'SPP' &&
@@ -132,7 +127,7 @@ export default function KeuanganPage() {
         toast.info(`${pendingHarusDihapus.length} tagihan SPP siswa Cuti dihapus otomatis`)
       }
 
-      // ✅ Hapus pending SPP bulan berjalan (n) jika ada, karena aturan baru adalah n-1
+      // ✅ Hapus pending SPP bulan berjalan (n) jika ada, karena aturan baru adalah n-1 (SELALU DIJALANKAN)
       // Contoh: Jika sekarang Maret, maka tagihan Maret belum boleh ada (terbit April nanti)
       const tagihanSalahBulan = pembayaranData.filter(p =>
         p.status === 'pending' &&
@@ -148,6 +143,14 @@ export default function KeuanganPage() {
           )
         )
         toast.info(`${tagihanSalahBulan.length} tagihan bulan berjalan dihapus (menyesuaikan aturan n-1)`)
+      }
+
+      // ✅ Pembuatan tagihan n-1 HANYA berjalan jika sudah melewati tanggal 1 (artinya mulai tgl 2)
+      if (tanggalSekarang <= 1) {
+        if (pendingHarusDihapus.length > 0 || tagihanSalahBulan.length > 0) {
+          await fetchPembayaran()
+        }
+        return // Stop untuk generate tagihan baru
       }
 
       // ✅ Buat pending hanya untuk siswa Aktif yang belum punya SPP bulan lalu (n-1)
