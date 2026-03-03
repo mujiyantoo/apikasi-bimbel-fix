@@ -380,7 +380,7 @@ Assalamualaikum Warahmatullahi Wabarakatuh,
 
 Bapak/Ibu orang tua wali siswa BIN Bimbel, kami informasikan sehubungan telah berakhirnya kegiatan belajar mengajar untuk bulan ${item.bulan} ${item.tahun}.
 
-Oleh karena itu, bagi yang masih ada kewajiban administrasi pendidikan dapat segera melunasinya dan bagi yang sudah kami mengucapkan terima kasih🙏🏼.
+Oleh karena itu, bagi yang masih ada kewajiban administrasi pendidikan dapat segera melunasinya dan bagi yang sudah kami mengucapkan terima kasih.
 
 Berdasarkan data pada sistem keuangan hingga ${tglSekarang} Pukul: ${jamSekarang} WIB, kami sampaikan data tagihan hingga Bulan ${item.bulan} ${item.tahun}:
 
@@ -401,14 +401,14 @@ Pembayaran bisa dilakukan melalui transfer ke nomor rekening berikut:
 - Gopay       : 0878 7107 9085       - Nia Kurniawati
 - Shopee Pay : 0878 7107 9085    - Nia Kurniawati
 
-Besar harapan kami Bapak/Ibu dapat menyelesaikan kewajiban administrasi. Terima kasih atas kerjasama dan perhatiannya 😊.
+Besar harapan kami Bapak/Ibu dapat menyelesaikan kewajiban administrasi. Terima kasih atas kerjasama dan perhatiannya.
 
 *Informasi Hubungi:*
-☎️ Nia Kurniawati. ST. : 0878 7107 9085
-☎️ Slamet Irawan.         : 0895 4028 47670
+Nia Kurniawati. ST. : 0878 7107 9085
+Slamet Irawan.         : 0895 4028 47670
 
 Hormat kami,
-Bag. Keuangan BIN Bimbel 😇`
+Bag. Keuangan BIN Bimbel`
 
 
     const url = `https://wa.me/${waNumber}?text=${encodeURIComponent(pesan)}`
