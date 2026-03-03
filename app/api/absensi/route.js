@@ -3,12 +3,19 @@ import clientPromise from '@/lib/mongodb'
 
 export const dynamic = 'force-dynamic'
 
-// Koordinat lokasi kantor (ganti dengan koordinat asli)
-const LOKASI_KANTOR = {
-  lat: -6.9175,  // ← GANTI dengan latitude kantor
-  lng: 107.6191  // ← GANTI dengan longitude kantor
+// Ambil lokasi kantor & radius dari database (bukan hardcoded)
+async function getLokasikantor(db) {
+  const setting = await db.collection('settings').findOne({ key: 'lokasi_kantor' })
+  if (setting?.value) {
+    return {
+      lat: setting.value.lat,
+      lng: setting.value.lng,
+      radius: setting.value.radius || 30
+    }
+  }
+  // Fallback default jika belum pernah disetting
+  return { lat: -6.9175, lng: 107.6191, radius: 30 }
 }
-const RADIUS_METER = 20
 
 function hitungJarak(lat1, lng1, lat2, lng2) {
   const R = 6371000
@@ -58,16 +65,20 @@ export async function POST(request) {
     const data = await request.json()
     const { pegawai_id, pegawai_nama, lat, lng, tipe } = data
 
-    // Validasi jarak
-    const jarak = hitungJarak(lat, lng, LOKASI_KANTOR.lat, LOKASI_KANTOR.lng)
-    if (jarak > RADIUS_METER) {
+    const client = await clientPromise
+    const db = client.db(process.env.DB_NAME)
+
+    // Ambil lokasi & radius dari database
+    const lokasiKantor = await getLokasikantor(db)
+
+    // Validasi jarak menggunakan radius dari DB
+    const jarak = hitungJarak(lat, lng, lokasiKantor.lat, lokasiKantor.lng)
+    if (jarak > lokasiKantor.radius) {
       return NextResponse.json({
-        error: `Anda berada ${Math.round(jarak)} meter dari kantor. Harus dalam radius ${RADIUS_METER} meter.`
+        error: `Anda berada ${Math.round(jarak)} meter dari kantor. Harus dalam radius ${lokasiKantor.radius} meter.`
       }, { status: 400 })
     }
 
-    const client = await clientPromise
-    const db = client.db(process.env.DB_NAME)
     const sekarang = new Date()
     const hariIni = new Date()
     hariIni.setHours(0, 0, 0, 0)

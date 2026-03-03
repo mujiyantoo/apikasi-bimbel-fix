@@ -18,6 +18,7 @@ export default function AbsensiPage() {
   const [loginLoading, setLoginLoading] = useState(false)
   const [loginError, setLoginError] = useState('')
   const [kinerjaRingkasan, setKinerjaRingkasan] = useState({ jumlah: 0, total: 0 })
+  const [radiusKantor, setRadiusKantor] = useState(30)
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -32,8 +33,17 @@ export default function AbsensiPage() {
       ambilLokasi()
       fetchAbsensiHariIni()
       fetchKinerjaRingkasan()
+      fetchLokasiKantor()
     }
   }, [session])
+
+  const fetchLokasiKantor = async () => {
+    try {
+      const res = await fetch('/api/absensi/lokasi')
+      const data = await res.json()
+      if (data?.radius) setRadiusKantor(data.radius)
+    } catch (err) { console.error(err) }
+  }
 
   const ambilLokasi = () => {
     setLokasiError('')
@@ -270,7 +280,7 @@ export default function AbsensiPage() {
           </button>
         </div>
 
-        <p className="text-center text-xs text-gray-400">Absensi hanya bisa dilakukan dalam radius 20 meter dari kantor</p>
+        <p className="text-center text-xs text-gray-400">Absensi hanya bisa dilakukan dalam radius {radiusKantor} meter dari kantor</p>
 
         {/* ✅ LINK KE HALAMAN KINERJA */}
         <Link
