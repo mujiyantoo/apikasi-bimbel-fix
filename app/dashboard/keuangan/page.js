@@ -14,7 +14,7 @@ import { toast } from 'sonner'
 import {
   Plus, Search, Wallet, Loader2, Receipt, CreditCard,
   TrendingUp, ArrowUpRight, ArrowDownRight, DollarSign,
-  ArrowLeft, CheckCircle, MessageCircle
+  ArrowLeft, CheckCircle, MessageCircle, RefreshCw
 } from 'lucide-react'
 
 const SPP_TARIF = { SD: 200000, SMP: 250000, SMA: 250000 }
@@ -422,16 +422,28 @@ Bag. Keuangan BIN Bimbel 😇`
           </p>
         </div>
 
-        {activeTab !== 'laporan' && (
-          <Button onClick={handleOpenDialog} className={
-            activeTab === 'pengeluaran'
-              ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700'
-              : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
-          }>
-            <Plus className="w-4 h-4 mr-2" />
-            {activeTab === 'pengeluaran' ? 'Catat Pengeluaran' : 'Tambah Pembayaran'}
+        <div className="flex gap-2 items-center">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={fetchPembayaran}
+            disabled={loading}
+            title="Refresh data tagihan"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
-        )}
+
+          {activeTab !== 'laporan' && (
+            <Button onClick={handleOpenDialog} className={
+              activeTab === 'pengeluaran'
+                ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700'
+                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
+            }>
+              <Plus className="w-4 h-4 mr-2" />
+              {activeTab === 'pengeluaran' ? 'Catat Pengeluaran' : 'Tambah Pembayaran'}
+            </Button>
+          )}
+        </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-md">
