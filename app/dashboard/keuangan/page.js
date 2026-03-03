@@ -228,7 +228,12 @@ export default function KeuanganPage() {
     if (activeTab === 'spp') {
       data = pembayaran.filter(p => p.jenis !== 'Pengeluaran' && p.status === 'lunas')
     } else if (activeTab === 'tagihan') {
-      data = pembayaran.filter(p => p.status === 'pending')
+      // ✅ Hanya tampilkan tagihan pending untuk bulan (n-1)
+      data = pembayaran.filter(p =>
+        p.status === 'pending' &&
+        p.bulan?.toLowerCase() === bulanTagihan.toLowerCase() &&
+        p.tahun === tahunTagihan
+      )
     } else if (activeTab === 'pengeluaran') {
       data = pembayaran.filter(p => p.jenis === 'Pengeluaran')
     }
@@ -245,8 +250,13 @@ export default function KeuanganPage() {
     const expense = pembayaran
       .filter(p => p.jenis === 'Pengeluaran')
       .reduce((acc, curr) => acc + (curr.jumlah || 0), 0)
+    // ✅ Pending hanya untuk bulan (n-1)
     const pending = pembayaran
-      .filter(p => p.status === 'pending')
+      .filter(p =>
+        p.status === 'pending' &&
+        p.bulan?.toLowerCase() === bulanTagihan.toLowerCase() &&
+        p.tahun === tahunTagihan
+      )
       .reduce((acc, curr) => acc + (curr.jumlah || 0), 0)
     return { income, expense, pending, net: income - expense }
   }, [pembayaran])
@@ -581,7 +591,11 @@ Bag. Keuangan BIN Bimbel 😇`
             <CardDescription>
               {formatCurrency(stats.pending)}
               <span className="ml-2 text-emerald-600 font-semibold">
-                ({pembayaran.filter(p => p.status === 'pending').length} siswa)
+                ({pembayaran.filter(p =>
+                  p.status === 'pending' &&
+                  p.bulan?.toLowerCase() === bulanTagihan.toLowerCase() &&
+                  p.tahun === tahunTagihan
+                ).length} siswa)
               </span>
             </CardDescription>
           </CardHeader>

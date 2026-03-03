@@ -14,13 +14,27 @@ export async function GET() {
         // Get total employees count
         const totalPegawai = await db.collection('pegawai').countDocuments()
 
-        // Get pending payments count
-        const pembayaranPending = await db.collection('pembayaran').countDocuments({ status: 'pending' })
+        // Bulan tagihan = bulan (n-1), terbit tanggal 1 bulan ini
+        const now = new Date()
+        const bulanLaluDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+        const bulanOptions = [
+            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+        ]
+        const bulanTagihan = bulanOptions[bulanLaluDate.getMonth()]
+        const tahunTagihan = bulanLaluDate.getFullYear().toString()
+
+        // Get pending payments count — hanya untuk bulan (n-1)
+        const pembayaranPending = await db.collection('pembayaran').countDocuments({
+            status: 'pending',
+            bulan: bulanTagihan,
+            tahun: tahunTagihan
+        })
 
         // Get total revenue (sum of paid payments)
         const revenueResult = await db.collection('pembayaran').aggregate([
-            { $match: { status: 'paid' } },
-            { $group: { _id: null, total: { $sum: '$amount' } } }
+            { $match: { status: 'lunas' } },
+            { $group: { _id: null, total: { $sum: '$jumlah' } } }
         ]).toArray()
         const totalPendapatan = revenueResult.length > 0 ? revenueResult[0].total : 0
 
