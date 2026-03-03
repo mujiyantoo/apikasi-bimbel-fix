@@ -32,8 +32,17 @@ const bulanOptions = [
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ]
 const tahunOptions = ['2023', '2024', '2025', '2026']
-const bulanSekarang = new Date().toLocaleDateString('id-ID', { month: 'long' })
-const tahunSekarang = new Date().getFullYear().toString()
+
+// === LOGIKA n-1: Tagihan terbit setelah tanggal 1, untuk bulan SEBELUMNYA ===
+const _now = new Date()
+const _bulanLalu = new Date(_now.getFullYear(), _now.getMonth() - 1, 1)
+const bulanTagihan = _bulanLalu.toLocaleDateString('id-ID', { month: 'long' })
+const tahunTagihan = _bulanLalu.getFullYear().toString()
+const tanggalSekarang = _now.getDate() // hari ke berapa bulan ini
+
+// Untuk default form (tetap pakai bulan berjalan agar fleksibel input manual)
+const bulanSekarang = _now.toLocaleDateString('id-ID', { month: 'long' })
+const tahunSekarang = _now.getFullYear().toString()
 
 export default function KeuanganPage() {
   const [activeTab, setActiveTab] = useState('tagihan')
@@ -85,11 +94,18 @@ export default function KeuanganPage() {
   }
 
   // =============================================
-  // AUTO-GENERATE PENDING SPP BULANAN
+  // AUTO-GENERATE PENDING SPP BULANAN (SISTEM n-1)
+  // ✅ Tagihan = bulan SEBELUMNYA (bukan bulan ini)
+  // ✅ Hanya berjalan setelah tanggal 1 setiap bulan
   // ✅ Skip siswa Cuti
   // ✅ Hapus pending SPP siswa yang sedang Cuti
   // =============================================
   const generateSPPBulanan = async (siswaData, pembayaranData) => {
+    // ✅ Hanya generate jika sudah melewati tanggal 1 (awal bulan baru)
+    if (tanggalSekarang < 1) {
+      return
+    }
+
     setGenerating(true)
     try {
       // Pisahkan siswa aktif dan cuti
@@ -98,12 +114,12 @@ export default function KeuanganPage() {
         siswaData.filter(s => s.status === 'Cuti').map(s => s.id)
       )
 
-      // ✅ Hapus pending SPP bulan ini untuk siswa yang Cuti
+      // ✅ Hapus pending SPP bulan lalu untuk siswa yang Cuti
       const pendingHarusDihapus = pembayaranData.filter(p =>
         p.status === 'pending' &&
         p.jenis === 'SPP' &&
-        p.bulan === bulanSekarang &&
-        p.tahun === tahunSekarang &&
+        p.bulan === bulanTagihan &&
+        p.tahun === tahunTagihan &&
         siswaCutiIds.has(p.siswaId)
       )
 
@@ -116,10 +132,10 @@ export default function KeuanganPage() {
         toast.info(`${pendingHarusDihapus.length} tagihan SPP siswa Cuti dihapus otomatis`)
       }
 
-      // ✅ Buat pending hanya untuk siswa Aktif yang belum punya SPP bulan ini
+      // ✅ Buat pending hanya untuk siswa Aktif yang belum punya SPP bulan lalu (n-1)
       const sudahAdaSPP = new Set(
         pembayaranData
-          .filter(p => p.jenis === 'SPP' && p.bulan === bulanSekarang && p.tahun === tahunSekarang)
+          .filter(p => p.jenis === 'SPP' && p.bulan === bulanTagihan && p.tahun === tahunTagihan)
           .map(p => p.siswaId)
       )
 
@@ -135,16 +151,16 @@ export default function KeuanganPage() {
                 siswaId: siswa.id,
                 namaSiswa: siswa.nama,
                 jenis: 'SPP',
-                bulan: bulanSekarang,
-                tahun: tahunSekarang,
+                bulan: bulanTagihan,
+                tahun: tahunTagihan,
                 jumlah: getSPPTarif(siswa.kelas),
                 status: 'pending',
-                keterangan: `SPP ${bulanSekarang} ${tahunSekarang} - ${siswa.kelas}`
+                keterangan: `SPP ${bulanTagihan} ${tahunTagihan} - ${siswa.kelas}`
               })
             })
           )
         )
-        toast.info(`${siswaBlumAdaSPP.length} tagihan SPP ${bulanSekarang} dibuat otomatis`)
+        toast.info(`${siswaBlumAdaSPP.length} tagihan SPP ${bulanTagihan} ${tahunTagihan} dibuat otomatis`)
       }
 
       await fetchPembayaran()
@@ -362,9 +378,12 @@ Bag. Keuangan BIN Bimbel 😇`
           <p className="text-gray-500">Kelola arus kas dan laporan keuangan</p>
           {generating && (
             <p className="text-xs text-blue-500 flex items-center gap-1 mt-1">
-              <Loader2 className="w-3 h-3 animate-spin" /> Menyiapkan tagihan SPP bulan ini...
+              <Loader2 className="w-3 h-3 animate-spin" /> Menyiapkan tagihan SPP {bulanTagihan} {tahunTagihan}...
             </p>
           )}
+          <p className="text-xs text-gray-400 mt-1">
+            Tagihan aktif: SPP <strong>{bulanTagihan} {tahunTagihan}</strong> (terbit otomatis setelah tgl 1)
+          </p>
         </div>
 
         {activeTab !== 'laporan' && (
