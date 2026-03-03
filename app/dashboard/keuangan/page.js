@@ -35,13 +35,13 @@ const tahunOptions = ['2023', '2024', '2025', '2026']
 
 // === LOGIKA n-1: Tagihan terbit setelah tanggal 1, untuk bulan SEBELUMNYA ===
 const _now = new Date()
-const _bulanLalu = new Date(_now.getFullYear(), _now.getMonth() - 1, 1)
-const bulanTagihan = _bulanLalu.toLocaleDateString('id-ID', { month: 'long' })
-const tahunTagihan = _bulanLalu.getFullYear().toString()
+const _bulanLaluDate = new Date(_now.getFullYear(), _now.getMonth() - 1, 1)
+const bulanTagihan = bulanOptions[_bulanLaluDate.getMonth()]
+const tahunTagihan = _bulanLaluDate.getFullYear().toString()
 const tanggalSekarang = _now.getDate() // hari ke berapa bulan ini
 
 // Untuk default form (tetap pakai bulan berjalan agar fleksibel input manual)
-const bulanSekarang = _now.toLocaleDateString('id-ID', { month: 'long' })
+const bulanSekarang = bulanOptions[_now.getMonth()]
 const tahunSekarang = _now.getFullYear().toString()
 
 export default function KeuanganPage() {
