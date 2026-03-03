@@ -101,8 +101,8 @@ export default function KeuanganPage() {
   // ✅ Hapus pending SPP siswa yang sedang Cuti
   // =============================================
   const generateSPPBulanan = async (siswaData, pembayaranData) => {
-    // ✅ Hanya generate jika sudah melewati tanggal 1 (awal bulan baru)
-    if (tanggalSekarang < 1) {
+    // ✅ Hanya generate jika sudah melewati tanggal 1 (artinya mulai tanggal 2 ke atas)
+    if (tanggalSekarang <= 1) {
       return
     }
 
