@@ -14,7 +14,8 @@ import { toast } from 'sonner'
 import {
   Plus, Search, Wallet, Loader2, Receipt, CreditCard,
   TrendingUp, ArrowUpRight, ArrowDownRight, DollarSign,
-  ArrowLeft, CheckCircle, MessageCircle, RefreshCw
+  ArrowLeft, CheckCircle, MessageCircle, RefreshCw,
+  ShieldCheck, Sparkles, User, Calendar, Banknote, X
 } from 'lucide-react'
 
 const SPP_TARIF = { SD: 200000, SMP: 250000, SMA: 250000 }
@@ -54,6 +55,8 @@ export default function KeuanganPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [bayarItem, setBayarItem] = useState(null)
+  const [showPaySuccess, setShowPaySuccess] = useState(false)
+  const [lastPaidItem, setLastPaidItem] = useState(null)
   const { data: session } = useSession()
   const userRole = session?.user?.role || 'Admin'
 
@@ -66,7 +69,7 @@ export default function KeuanganPage() {
   const fetchPembayaran = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/pembayaran')
+      const res = await fetch(`/api/pembayaran?_t=${Date.now()}`, { cache: 'no-store' })
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
       const data = await res.json()
       setPembayaran(Array.isArray(data) ? data : [])
@@ -81,7 +84,7 @@ export default function KeuanganPage() {
 
   const fetchSiswa = async () => {
     try {
-      const res = await fetch('/api/siswa')
+      const res = await fetch(`/api/siswa?_t=${Date.now()}`, { cache: 'no-store' })
       if (res.ok) {
         const data = await res.json()
         setSiswaList(Array.isArray(data) ? data : [])
@@ -209,7 +212,7 @@ export default function KeuanganPage() {
       // ✅ LANGKAH 2: Ambil data siswa dan pembayaran (sudah bersih)
       const [siswaData, pembayaranRes] = await Promise.all([
         fetchSiswa(),
-        fetch('/api/pembayaran').then(r => r.json()).catch(() => [])
+        fetch(`/api/pembayaran?_t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json()).catch(() => [])
       ])
       const pembayaranData = Array.isArray(pembayaranRes) ? pembayaranRes : []
       setPembayaran(pembayaranData)
@@ -315,6 +318,11 @@ export default function KeuanganPage() {
     try {
       let res
       if (bayarItem?.id) {
+        // Optimistic update: immediately move item from pending→lunas in UI
+        setPembayaran(prev => prev.map(p =>
+          p.id === bayarItem.id ? { ...p, status: 'lunas', jumlah: parseInt(formData.jumlah) } : p
+        ))
+
         res = await fetch(`/api/pembayaran?id=${bayarItem.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -335,11 +343,28 @@ export default function KeuanganPage() {
       }
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Terjadi kesalahan')
-      toast.success(bayarItem ? 'Pembayaran berhasil dikonfirmasi!' : formData.jenis === 'Pengeluaran' ? 'Pengeluaran dicatat' : 'Pembayaran berhasil')
-      setIsDialogOpen(false)
-      setBayarItem(null)
+
+      if (bayarItem) {
+        // Show beautiful success overlay
+        setLastPaidItem(bayarItem)
+        setIsDialogOpen(false)
+        setBayarItem(null)
+        setShowPaySuccess(true)
+        setTimeout(() => setShowPaySuccess(false), 3000)
+        toast.success(`✅ Pembayaran ${bayarItem.namaSiswa} berhasil dikonfirmasi!`, { duration: 4000 })
+      } else {
+        toast.success(formData.jenis === 'Pengeluaran' ? 'Pengeluaran berhasil dicatat' : 'Pembayaran berhasil ditambahkan')
+        setIsDialogOpen(false)
+        setBayarItem(null)
+      }
       fetchPembayaran()
     } catch (error) {
+      // Revert optimistic update on error
+      if (bayarItem?.id) {
+        setPembayaran(prev => prev.map(p =>
+          p.id === bayarItem.id ? { ...p, status: 'pending' } : p
+        ))
+      }
       toast.error(error.message)
     } finally {
       setSubmitting(false)
@@ -460,91 +485,79 @@ Bag. Keuangan BIN Bimbel`
           )}
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        {/* ====== DIALOG TAMBAH PEMBAYARAN / PENGELUARAN (biasa) ====== */}
+        <Dialog open={isDialogOpen && !bayarItem} onOpenChange={(open) => { if (!open) { setIsDialogOpen(false); setBayarItem(null) } }}>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>
-                {bayarItem ? `Konfirmasi Pembayaran — ${bayarItem.namaSiswa}` :
-                  formData.jenis === 'Pengeluaran' ? 'Catat Pengeluaran' : 'Data Pembayaran'}
+                {formData.jenis === 'Pengeluaran' ? 'Catat Pengeluaran' : 'Data Pembayaran'}
               </DialogTitle>
               <DialogDescription>
-                {bayarItem ? `SPP ${bayarItem.bulan} ${bayarItem.tahun}` :
-                  formData.jenis === 'Pengeluaran' ? 'Masukkan detail pengeluaran operasional' : 'Masukkan rincian pembayaran siswa'}
+                {formData.jenis === 'Pengeluaran' ? 'Masukkan detail pengeluaran operasional' : 'Masukkan rincian pembayaran siswa'}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {bayarItem ? (
-                <div className="bg-blue-50 rounded-lg p-3 space-y-1 text-sm">
-                  <div className="flex justify-between"><span className="text-gray-600">Siswa</span><span className="font-semibold">{bayarItem.namaSiswa}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-600">Periode</span><span className="font-semibold">{bayarItem.bulan} {bayarItem.tahun}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-600">Jumlah</span><span className="font-bold text-blue-700">{formatCurrency(bayarItem.jumlah)}</span></div>
+              {formData.jenis !== 'Pengeluaran' ? (
+                <div className="space-y-2">
+                  <Label>Nama Siswa *</Label>
+                  <Select value={formData.siswaId} onValueChange={handleSiswaChange}>
+                    <SelectTrigger><SelectValue placeholder="Pilih siswa" /></SelectTrigger>
+                    <SelectContent>
+                      {siswaList.filter(s => (s.status || 'Aktif') === 'Aktif').map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.nama} - {s.kelas}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               ) : (
-                <>
-                  {formData.jenis !== 'Pengeluaran' ? (
-                    <div className="space-y-2">
-                      <Label>Nama Siswa *</Label>
-                      <Select value={formData.siswaId} onValueChange={handleSiswaChange}>
-                        <SelectTrigger><SelectValue placeholder="Pilih siswa" /></SelectTrigger>
-                        <SelectContent>
-                          {/* ✅ Hanya tampilkan siswa Aktif di dropdown */}
-                          {siswaList.filter(s => (s.status || 'Aktif') === 'Aktif').map((s) => (
-                            <SelectItem key={s.id} value={s.id}>{s.nama} - {s.kelas}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <Label>Keterangan Pengeluaran *</Label>
-                      <Input
-                        placeholder="Contoh: Bayar Listrik, Gaji Tutor, Pembelian Spidol"
-                        value={formData.keterangan}
-                        onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })}
-                        required
-                      />
-                    </div>
-                  )}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Bulan</Label>
-                      <Select value={formData.bulan} onValueChange={(val) => setFormData({ ...formData, bulan: val })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>{bulanOptions.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Tahun</Label>
-                      <Select value={formData.tahun} onValueChange={(val) => setFormData({ ...formData, tahun: val })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>{tahunOptions.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Jenis</Label>
-                    <Select value={formData.jenis} onValueChange={handleJenisChange}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {activeTab === 'pengeluaran' ? (
-                          <SelectItem value="Pengeluaran">Pengeluaran Operasional</SelectItem>
-                        ) : (
-                          <>
-                            <SelectItem value="SPP">SPP Bulanan</SelectItem>
-                            <SelectItem value="Pendaftaran">Biaya Pendaftaran</SelectItem>
-                            <SelectItem value="Buku">Buku & Modul</SelectItem>
-                            <SelectItem value="Lainnya">Lainnya</SelectItem>
-                          </>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {formData.jenis === 'SPP' && (
-                    <div className="bg-blue-50 rounded-lg px-3 py-2 text-xs text-blue-700">
-                      Tarif: SD Rp 200.000 · SMP Rp 250.000 · SMA Rp 250.000
-                    </div>
-                  )}
-                </>
+                <div className="space-y-2">
+                  <Label>Keterangan Pengeluaran *</Label>
+                  <Input
+                    placeholder="Contoh: Bayar Listrik, Gaji Tutor, Pembelian Spidol"
+                    value={formData.keterangan}
+                    onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })}
+                    required
+                  />
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Bulan</Label>
+                  <Select value={formData.bulan} onValueChange={(val) => setFormData({ ...formData, bulan: val })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{bulanOptions.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Tahun</Label>
+                  <Select value={formData.tahun} onValueChange={(val) => setFormData({ ...formData, tahun: val })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{tahunOptions.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Jenis</Label>
+                <Select value={formData.jenis} onValueChange={handleJenisChange}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {activeTab === 'pengeluaran' ? (
+                      <SelectItem value="Pengeluaran">Pengeluaran Operasional</SelectItem>
+                    ) : (
+                      <>
+                        <SelectItem value="SPP">SPP Bulanan</SelectItem>
+                        <SelectItem value="Pendaftaran">Biaya Pendaftaran</SelectItem>
+                        <SelectItem value="Buku">Buku & Modul</SelectItem>
+                        <SelectItem value="Lainnya">Lainnya</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              {formData.jenis === 'SPP' && (
+                <div className="bg-blue-50 rounded-lg px-3 py-2 text-xs text-blue-700">
+                  Tarif: SD Rp 200.000 · SMP Rp 250.000 · SMA Rp 250.000
+                </div>
               )}
               <div className="space-y-2">
                 <Label>Jumlah (Rp) *</Label>
@@ -553,29 +566,119 @@ Bag. Keuangan BIN Bimbel`
                   value={formData.jumlah}
                   onChange={(e) => setFormData({ ...formData, jumlah: e.target.value })}
                   required
-                  readOnly={!!bayarItem}
-                  className={bayarItem ? 'bg-gray-50' : ''}
                 />
               </div>
-              {!bayarItem && (
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select value={formData.status} onValueChange={(val) => setFormData({ ...formData, status: val })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="lunas">Lunas</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={formData.status} onValueChange={(val) => setFormData({ ...formData, status: val })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="lunas">Lunas</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex gap-3 pt-4">
                 <Button type="button" variant="outline" onClick={() => { setIsDialogOpen(false); setBayarItem(null) }} className="flex-1">Batal</Button>
                 <Button type="submit" disabled={submitting} className="flex-1 bg-blue-600 text-white hover:bg-blue-700">
-                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : bayarItem ? '✓ Konfirmasi Bayar' : 'Simpan'}
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Simpan'}
                 </Button>
               </div>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* ====== DIALOG KONFIRMASI BAYAR — BEAUTIFUL ====== */}
+        <Dialog open={isDialogOpen && !!bayarItem} onOpenChange={(open) => { if (!open) { setIsDialogOpen(false); setBayarItem(null) } }}>
+          <DialogContent className="max-w-sm p-0 overflow-hidden border-0 shadow-2xl">
+            {/* Gradient Header */}
+            <div className="relative bg-gradient-to-br from-emerald-500 via-green-500 to-teal-600 px-6 pt-8 pb-6 text-white text-center">
+              {/* Close button */}
+              <button
+                onClick={() => { setIsDialogOpen(false); setBayarItem(null) }}
+                className="absolute top-3 right-3 p-1.5 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+              >
+                <X className="w-4 h-4 text-white" />
+              </button>
+              {/* Icon */}
+              <div className="flex justify-center mb-3">
+                <div className="relative">
+                  <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center ring-4 ring-white/30 shadow-lg">
+                    <ShieldCheck className="w-10 h-10 text-white" />
+                  </div>
+                  <div className="absolute -top-1 -right-1">
+                    <Sparkles className="w-5 h-5 text-yellow-300 animate-pulse" />
+                  </div>
+                </div>
+              </div>
+              <h2 className="text-lg font-bold tracking-wide">Konfirmasi Pembayaran</h2>
+              <p className="text-emerald-100 text-sm mt-1">Pastikan data berikut sudah benar</p>
+            </div>
+
+            {/* Info Card */}
+            {bayarItem && (
+              <div className="px-6 py-5 space-y-3 bg-white">
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                      <User className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Nama Siswa</p>
+                      <p className="font-semibold text-gray-800 truncate">{bayarItem.namaSiswa}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                    <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+                      <Calendar className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Periode</p>
+                      <p className="font-semibold text-gray-800">{bayarItem.bulan} {bayarItem.tahun}</p>
+                    </div>
+                    <span className="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-700 font-semibold border border-orange-200">SPP</span>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-3.5 bg-emerald-50 rounded-xl border border-emerald-100">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-200 flex items-center justify-center flex-shrink-0">
+                      <Banknote className="w-4 h-4 text-emerald-700" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-emerald-600 font-medium uppercase tracking-wide">Total Pembayaran</p>
+                      <p className="font-bold text-emerald-700 text-lg">{formatCurrency(bayarItem.jumlah)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-center text-xs text-gray-400 pt-1">
+                  Klik <strong>Konfirmasi Bayar</strong> untuk menandai tagihan ini sebagai <span className="text-green-600 font-semibold">Lunas</span>
+                </p>
+
+                {/* Action Buttons */}
+                <form onSubmit={handleSubmit} className="flex gap-3 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => { setIsDialogOpen(false); setBayarItem(null) }}
+                    className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                  >
+                    <X className="w-4 h-4 mr-1.5" /> Batal
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white shadow-md shadow-emerald-200 transition-all active:scale-95"
+                  >
+                    {submitting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <><CheckCircle className="w-4 h-4 mr-1.5" /> Konfirmasi Bayar</>
+                    )}
+                  </Button>
+                </form>
+              </div>
+            )}
           </DialogContent>
         </Dialog>
       </div>
@@ -744,6 +847,57 @@ Bag. Keuangan BIN Bimbel`
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* ====== PAYMENT SUCCESS OVERLAY ====== */}
+      {showPaySuccess && lastPaidItem && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          style={{ animation: 'fadeIn 0.3s ease' }}
+          onClick={() => setShowPaySuccess(false)}
+        >
+          <style>{`
+            @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+            @keyframes scaleIn { from { opacity: 0; transform: scale(0.7) } to { opacity: 1; transform: scale(1) } }
+            @keyframes checkDraw { from { stroke-dashoffset: 60 } to { stroke-dashoffset: 0 } }
+            @keyframes ringPulse { 0%,100% { transform: scale(1); opacity:0.6 } 50% { transform: scale(1.15); opacity:0.2 } }
+          `}</style>
+          <div
+            className="bg-white rounded-3xl shadow-2xl px-10 py-8 text-center max-w-xs w-full mx-4"
+            style={{ animation: 'scaleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Animated ring + check */}
+            <div className="flex justify-center mb-4 relative">
+              <div
+                className="absolute w-24 h-24 rounded-full bg-emerald-100"
+                style={{ animation: 'ringPulse 1.5s ease-in-out infinite' }}
+              />
+              <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center shadow-lg shadow-emerald-200">
+                <svg viewBox="0 0 40 40" className="w-10 h-10">
+                  <polyline
+                    points="8,20 16,28 32,12"
+                    fill="none"
+                    stroke="white"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeDasharray="60"
+                    style={{ animation: 'checkDraw 0.5s ease 0.2s forwards', strokeDashoffset: 60 }}
+                  />
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-gray-800 mb-1">Pembayaran Berhasil!</h3>
+            <p className="text-gray-500 text-sm mb-3">{lastPaidItem.namaSiswa}</p>
+            <div className="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-2">
+              <Banknote className="w-4 h-4 text-emerald-600" />
+              <span className="font-bold text-emerald-700 text-base">{formatCurrency(lastPaidItem.jumlah)}</span>
+            </div>
+            <p className="text-xs text-gray-400 mt-3">SPP {lastPaidItem.bulan} {lastPaidItem.tahun} · <span className="text-green-600 font-medium">Lunas ✓</span></p>
+            <p className="text-xs text-gray-300 mt-3">Klik di mana saja untuk menutup</p>
+          </div>
+        </div>
       )}
     </div>
   )
