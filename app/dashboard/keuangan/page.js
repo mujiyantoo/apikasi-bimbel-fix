@@ -286,7 +286,7 @@ export default function KeuanganPage() {
     if (!confirm(`Konfirmasi pembayaran ${item.namaSiswa} sebesar ${formatCurrency(item.jumlah)}?`)) {
       return
     }
-    
+
     setLoading(true)
     try {
       const res = await fetch(`/api/pembayaran?id=${item.id}`, {
@@ -294,18 +294,18 @@ export default function KeuanganPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'lunas' })
       })
-      
+
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Terjadi kesalahan')
-      
+
       toast.success(`Pembayaran ${item.namaSiswa} berhasil!`)
-      
+
       // ✅ Debug: log semua ID untuk troubleshooting
       console.log('=== DEBUG PAYMENT ===')
       console.log('item.id:', item.id)
       console.log('item._id:', item._id)
       console.log('item:', item)
-      
+
       // ✅ Langsung update state lokal agar card langsung berubah
       setPembayaran(prev => {
         const updated = prev.map(p => {
@@ -316,7 +316,7 @@ export default function KeuanganPage() {
         console.log('Pending count after update:', updated.filter(p => p.status === 'pending').length)
         return updated
       })
-      
+
     } catch (error) {
       toast.error(error.message)
     } finally {
@@ -838,6 +838,7 @@ Bag. Keuangan BIN Bimbel`
                     <TableRow>
                       <TableHead>Tanggal</TableHead>
                       <TableHead>{activeTab === 'pengeluaran' ? 'Keterangan' : 'Nama Siswa'}</TableHead>
+                      {activeTab !== 'pengeluaran' && <TableHead>Kelas</TableHead>}
                       <TableHead>Jenis</TableHead>
                       <TableHead>Periode</TableHead>
                       <TableHead>Jumlah</TableHead>
@@ -847,43 +848,50 @@ Bag. Keuangan BIN Bimbel`
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredData.map((p) => (
-                      <TableRow key={p.id}>
-                        <TableCell className="text-gray-500">
-                          {new Date(p.createdAt).toLocaleDateString('id-ID')}
-                        </TableCell>
-                        <TableCell className="font-medium">{p.namaSiswa}</TableCell>
-                        <TableCell>{p.jenis}</TableCell>
-                        <TableCell>{p.bulan} {p.tahun}</TableCell>
-                        <TableCell className="font-semibold">{formatCurrency(p.jumlah)}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={p.status === 'lunas' ? 'default' : 'secondary'}
-                            className={p.status === 'lunas' ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-100 text-orange-700'}
-                          >
-                            {p.status}
-                          </Badge>
-                        </TableCell>
-                        {activeTab === 'tagihan' && (
+                    {filteredData.map((p) => {
+                      const siswa = siswaList.find(s => s.id === p.siswaId);
+                      const kelasSiswa = siswa?.kelas || '-';
+                      return (
+                        <TableRow key={p.id}>
+                          <TableCell className="text-gray-500">
+                            {new Date(p.createdAt).toLocaleDateString('id-ID')}
+                          </TableCell>
+                          <TableCell className="font-medium">{p.namaSiswa}</TableCell>
+                          {activeTab !== 'pengeluaran' && (
+                            <TableCell>{kelasSiswa}</TableCell>
+                          )}
+                          <TableCell>{p.jenis}</TableCell>
+                          <TableCell>{p.bulan} {p.tahun}</TableCell>
+                          <TableCell className="font-semibold">{formatCurrency(p.jumlah)}</TableCell>
                           <TableCell>
-                            <button
-                              onClick={() => handleKirimWA(p)}
-                              title={`Kirim tagihan ke WA ${p.namaSiswa}`}
-                              className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-500 hover:bg-green-600 active:scale-95 transition-all shadow-sm"
+                            <Badge
+                              variant={p.status === 'lunas' ? 'default' : 'secondary'}
+                              className={p.status === 'lunas' ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-100 text-orange-700'}
                             >
-                              <MessageCircle className="w-4 h-4 text-white" />
-                            </button>
+                              {p.status}
+                            </Badge>
                           </TableCell>
-                        )}
-                        {activeTab === 'tagihan' && (
-                          <TableCell>
-                            <Button size="sm" onClick={() => handleBayar(p)} className="bg-green-600 hover:bg-green-700 text-white h-7 px-3 text-xs">
-                              <CheckCircle className="w-3 h-3 mr-1" /> Bayar
-                            </Button>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
+                          {activeTab === 'tagihan' && (
+                            <TableCell>
+                              <button
+                                onClick={() => handleKirimWA(p)}
+                                title={`Kirim tagihan ke WA ${p.namaSiswa}`}
+                                className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-500 hover:bg-green-600 active:scale-95 transition-all shadow-sm"
+                              >
+                                <MessageCircle className="w-4 h-4 text-white" />
+                              </button>
+                            </TableCell>
+                          )}
+                          {activeTab === 'tagihan' && (
+                            <TableCell>
+                              <Button size="sm" onClick={() => handleBayar(p)} className="bg-green-600 hover:bg-green-700 text-white h-7 px-3 text-xs">
+                                <CheckCircle className="w-3 h-3 mr-1" /> Bayar
+                              </Button>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
