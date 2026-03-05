@@ -296,7 +296,12 @@ export default function KeuanganPage() {
       if (!res.ok) throw new Error(data.error || 'Terjadi kesalahan')
       
       toast.success(`Pembayaran ${item.namaSiswa} berhasil!`)
-      fetchPembayaran()
+      
+      // ✅ Refresh data dengan timestamp untuk避免 cache
+      const resBaru = await fetch(`/api/pembayaran?_t=${Date.now()}`)
+      const dataBaru = await resBaru.json()
+      setPembayaran(Array.isArray(dataBaru) ? dataBaru : [])
+      
     } catch (error) {
       toast.error(error.message)
     } finally {
