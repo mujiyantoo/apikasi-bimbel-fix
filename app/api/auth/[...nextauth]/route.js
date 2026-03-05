@@ -1,19 +1,7 @@
 import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import { MongoClient } from 'mongodb'
+import clientPromise from '@/lib/mongodb'
 import bcrypt from 'bcryptjs'
-
-let client
-let db
-
-async function connectToMongo() {
-  if (!client) {
-    client = new MongoClient(process.env.MONGO_URL)
-    await client.connect()
-    db = client.db(process.env.DB_NAME)
-  }
-  return db
-}
 
 const handler = NextAuth({
   providers: [
@@ -25,34 +13,29 @@ const handler = NextAuth({
       },
       async authorize(credentials) {
         try {
+          console.log('Login attempt:', { email: credentials?.email })
 
-          console.log('Login attempt:', { email: credentials?.email, password: credentials?.password ? '***' : undefined })
-
-          // Hardcoded demo account
-          if (credentials.email === 'admin@bimbel.com' && credentials.password === 'admin123') {
-            return {
-              id: 'demo-user-id',
-              email: 'admin@bimbel.com',
-              name: 'Demo Admin',
-              role: 'admin'
-            }
-          }
-
-          const db = await connectToMongo()
+          const client = await clientPromise
+          const db = client.db('bimbel_db')
+          
           const user = await db.collection('users').findOne({ email: credentials.email })
 
           if (!user) {
+            console.log('User not found')
             return null
           }
 
           const isValid = await bcrypt.compare(credentials.password, user.password)
 
           if (!isValid) {
+            console.log('Invalid password')
             return null
           }
 
+          console.log('Login success:', { email: user.email, role: user.role })
+
           return {
-            id: user.id,
+            id: user._id.toString(),
             email: user.email,
             name: user.name,
             role: user.role
@@ -67,22 +50,43 @@ const handler = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = user.role
         token.id = user.id
+        token.email = user.email
+        token.name = user.name
+        token.role = user.role
+        token.iat = Math.floor(Date.now() / 1000) // Issue time
       }
+      
+      // Log untuk debugging
+      console.log('JWT Callback - Role:', token.role, 'Email:', token.email)
+      
       return token
     },
     async session({ session, token }) {
-      session.user.role = token.role
-      session.user.id = token.id
+      if (token && session.user) {
+        session.user.id = token.id
+        session.user.email = token.email
+        session.user.name = token.name
+        session.user.role = token.role
+      }
+      
+      // Log untuk debugging
+      console.log('Session Callback - Role:', session.user?.role, 'Email:', session.user?.email)
+      
       return session
     }
   },
   pages: {
-    signIn: '/login'
+    signIn: '/login',
+    signOut: '/login',
+    error: '/login'
   },
   session: {
-    strategy: 'jwt'
+    strategy: 'jwt',
+    maxAge: 24 * 60 * 60 // 24 jam - session expire otomatis
+  },
+  jwt: {
+    maxAge: 24 * 60 * 60 // 24 jam - JWT expire otomatis
   },
   secret: process.env.NEXTAUTH_SECRET
 })

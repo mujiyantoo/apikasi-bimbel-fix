@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,18 +19,28 @@ import {
   UserCog,
   Loader2,
   X,
-  ArrowLeft
+  ArrowLeft,
+  KeyRound,
+  CheckCircle
 } from 'lucide-react'
 
 const jabatanOptions = ['Guru', 'Tutor', 'Admin', 'Keuangan', 'Kebersihan', 'Keamanan', 'Lainnya']
 
 export default function PegawaiPage() {
+  const { data: session } = useSession()
+  const userRole = session?.user?.role || 'Admin'
+
   const [pegawai, setPegawai] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isAkunDialogOpen, setIsAkunDialogOpen] = useState(false)
   const [editingPegawai, setEditingPegawai] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [akunSubmitting, setAkunSubmitting] = useState(false)
+  const [selectedPegawai, setSelectedPegawai] = useState(null)
+  const [akunBerhasil, setAkunBerhasil] = useState([])
+
   const [formData, setFormData] = useState({
     nama: '',
     nip: '',
@@ -39,18 +50,18 @@ export default function PegawaiPage() {
     telepon: ''
   })
 
+  const [akunData, setAkunData] = useState({
+    email: '',
+    password: ''
+  })
+
   const fetchPegawai = async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
       if (search) params.append('search', search)
-
       const res = await fetch(`/api/pegawai?${params}`)
-
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`)
-      }
-
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
       const data = await res.json()
       setPegawai(Array.isArray(data) ? data : [])
     } catch (error) {
@@ -66,14 +77,7 @@ export default function PegawaiPage() {
   }, [search])
 
   const resetForm = () => {
-    setFormData({
-      nama: '',
-      nip: '',
-      jabatan: '',
-      jenisKelamin: '',
-      alamat: '',
-      telepon: ''
-    })
+    setFormData({ nama: '', nip: '', jabatan: '', jenisKelamin: '', alamat: '', telepon: '' })
     setEditingPegawai(null)
   }
 
@@ -94,26 +98,25 @@ export default function PegawaiPage() {
     setIsDialogOpen(true)
   }
 
+  const handleOpenAkunDialog = (p) => {
+    setSelectedPegawai(p)
+    setAkunData({ email: '', password: '' })
+    setIsAkunDialogOpen(true)
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSubmitting(true)
-
     try {
       const url = editingPegawai ? `/api/pegawai/${editingPegawai.id}` : '/api/pegawai'
       const method = editingPegawai ? 'PUT' : 'POST'
-
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       })
-
       const data = await res.json()
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Terjadi kesalahan')
-      }
-
+      if (!res.ok) throw new Error(data.error || 'Terjadi kesalahan')
       toast.success(editingPegawai ? 'Pegawai berhasil diupdate' : 'Pegawai berhasil ditambahkan')
       setIsDialogOpen(false)
       resetForm()
@@ -125,17 +128,41 @@ export default function PegawaiPage() {
     }
   }
 
+  const handleBuatAkun = async (e) => {
+    e.preventDefault()
+    setAkunSubmitting(true)
+    try {
+      const res = await fetch('/api/register-pegawai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nama: selectedPegawai.nama,
+          email: akunData.email,
+          password: akunData.password,
+          jabatan: selectedPegawai.jabatan,
+          secret: 'RAHASIA123'
+        })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Gagal membuat akun')
+      toast.success(`Akun login berhasil dibuat untuk ${selectedPegawai.nama}`)
+      setAkunBerhasil(prev => [...prev, selectedPegawai.id])
+      setIsAkunDialogOpen(false)
+    } catch (error) {
+      toast.error(error.message)
+    } finally {
+      setAkunSubmitting(false)
+    }
+  }
+
   const handleDelete = async (id, nama) => {
     if (!confirm(`Apakah Anda yakin ingin menghapus pegawai "${nama}"?`)) return
-
     try {
       const res = await fetch(`/api/pegawai/${id}`, { method: 'DELETE' })
-
       if (!res.ok) {
         const data = await res.json()
         throw new Error(data.error || 'Gagal menghapus pegawai')
       }
-
       toast.success('Pegawai berhasil dihapus')
       fetchPegawai()
     } catch (error) {
@@ -160,14 +187,13 @@ export default function PegawaiPage() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Button variant="ghost" size="icon" asChild className="h-8 w-8 -ml-2">
-              <a href="/dashboard">
-                <ArrowLeft className="h-4 w-4" />
-              </a>
+              <a href="/dashboard"><ArrowLeft className="h-4 w-4" /></a>
             </Button>
             <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Data Pegawai</h1>
           </div>
           <p className="text-gray-500">Kelola data pegawai dan staf</p>
         </div>
+
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button
@@ -209,29 +235,17 @@ export default function PegawaiPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="jabatan">Jabatan *</Label>
-                <Select
-                  value={formData.jabatan}
-                  onValueChange={(value) => setFormData({ ...formData, jabatan: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih jabatan" />
-                  </SelectTrigger>
+                <Select value={formData.jabatan} onValueChange={(value) => setFormData({ ...formData, jabatan: value })}>
+                  <SelectTrigger><SelectValue placeholder="Pilih jabatan" /></SelectTrigger>
                   <SelectContent>
-                    {jabatanOptions.map((jabatan) => (
-                      <SelectItem key={jabatan} value={jabatan}>{jabatan}</SelectItem>
-                    ))}
+                    {jabatanOptions.map((j) => <SelectItem key={j} value={j}>{j}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="jenisKelamin">Jenis Kelamin</Label>
-                <Select
-                  value={formData.jenisKelamin}
-                  onValueChange={(value) => setFormData({ ...formData, jenisKelamin: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih jenis kelamin" />
-                  </SelectTrigger>
+                <Select value={formData.jenisKelamin} onValueChange={(value) => setFormData({ ...formData, jenisKelamin: value })}>
+                  <SelectTrigger><SelectValue placeholder="Pilih jenis kelamin" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Laki-laki">Laki-laki</SelectItem>
                     <SelectItem value="Perempuan">Perempuan</SelectItem>
@@ -257,30 +271,63 @@ export default function PegawaiPage() {
                 />
               </div>
               <div className="flex gap-3 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
-                  className="flex-1"
-                >
-                  Batal
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600"
-                >
-                  {submitting ? (
-                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Menyimpan...</>
-                  ) : (
-                    editingPegawai ? 'Update' : 'Simpan'
-                  )}
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="flex-1">Batal</Button>
+                <Button type="submit" disabled={submitting} className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600">
+                  {submitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Menyimpan...</> : editingPegawai ? 'Update' : 'Simpan'}
                 </Button>
               </div>
             </form>
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Dialog Buat Akun Login - hanya Owner */}
+      <Dialog open={isAkunDialogOpen} onOpenChange={setIsAkunDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="w-5 h-5 text-blue-600" />
+              Buat Akun Login
+            </DialogTitle>
+            <DialogDescription>
+              Buat akun login untuk <strong>{selectedPegawai?.nama}</strong> agar bisa absensi
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleBuatAkun} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Email *</Label>
+              <Input
+                type="email"
+                value={akunData.email}
+                onChange={(e) => setAkunData({ ...akunData, email: e.target.value })}
+                placeholder="Contoh: nama@binbimbel.com"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Password *</Label>
+              <Input
+                type="text"
+                value={akunData.password}
+                onChange={(e) => setAkunData({ ...akunData, password: e.target.value })}
+                placeholder="Minimal 6 karakter"
+                minLength={6}
+                required
+              />
+              <p className="text-xs text-gray-400">Password ini yang dipakai pegawai untuk login di halaman absensi</p>
+            </div>
+            <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700">
+              📱 Pegawai login absensi di: <strong>https://bin.biz.id/absensi</strong>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button type="button" variant="outline" onClick={() => setIsAkunDialogOpen(false)} className="flex-1">Batal</Button>
+              <Button type="submit" disabled={akunSubmitting} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
+                {akunSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Membuat...</> : <><KeyRound className="w-4 h-4 mr-2" /> Buat Akun</>}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Filters */}
       <Card className="border-0 shadow-md">
@@ -296,11 +343,7 @@ export default function PegawaiPage() {
               />
             </div>
             {search && (
-              <Button
-                variant="ghost"
-                onClick={() => setSearch('')}
-                className="text-gray-500"
-              >
+              <Button variant="ghost" onClick={() => setSearch('')} className="text-gray-500">
                 <X className="w-4 h-4 mr-1" /> Reset
               </Button>
             )}
@@ -330,11 +373,7 @@ export default function PegawaiPage() {
             <div className="text-center py-12">
               <UserCog className="w-12 h-12 mx-auto text-gray-300 mb-4" />
               <p className="text-gray-500">Belum ada data pegawai</p>
-              <Button
-                onClick={() => handleOpenDialog()}
-                variant="link"
-                className="mt-2 text-emerald-600"
-              >
+              <Button onClick={() => handleOpenDialog()} variant="link" className="mt-2 text-emerald-600">
                 Tambah pegawai pertama
               </Button>
             </div>
@@ -355,16 +394,27 @@ export default function PegawaiPage() {
                   {Array.isArray(pegawai) && pegawai.map((p) => (
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{p.nama}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{p.nip}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getJabatanColor(p.jabatan)}>{p.jabatan}</Badge>
-                      </TableCell>
+                      <TableCell><Badge variant="secondary">{p.nip}</Badge></TableCell>
+                      <TableCell><Badge className={getJabatanColor(p.jabatan)}>{p.jabatan}</Badge></TableCell>
                       <TableCell>{p.jenisKelamin || '-'}</TableCell>
                       <TableCell>{p.telepon || '-'}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+                          {/* Tombol Buat Akun - hanya Owner */}
+                          {userRole === 'Owner' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenAkunDialog(p)}
+                              className={akunBerhasil.includes(p.id) ? 'text-green-600 hover:bg-green-50' : 'text-blue-600 hover:bg-blue-50'}
+                              title="Buat akun login absensi"
+                            >
+                              {akunBerhasil.includes(p.id)
+                                ? <CheckCircle className="w-4 h-4" />
+                                : <KeyRound className="w-4 h-4" />
+                              }
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"

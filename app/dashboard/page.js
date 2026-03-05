@@ -15,7 +15,12 @@ import {
   ArrowUpRight,
   RefreshCw,
   GraduationCap,
-  DollarSign
+  DollarSign,
+  CheckCircle2,
+  XCircle,
+  MapPin,
+  LogIn,
+  LogOut
 } from 'lucide-react'
 
 export default function DashboardPage() {
@@ -28,16 +33,20 @@ export default function DashboardPage() {
     recentActivities: []
   })
   const [loading, setLoading] = useState(true)
+  const [absensiData, setAbsensiData] = useState([])
+  const [jadwalHariIni, setJadwalHariIni] = useState([])
+  const [loadingAbsensi, setLoadingAbsensi] = useState(true)
+
+  const isAdminOrOwner = session?.user?.role === 'Admin' || session?.user?.role === 'Owner'
+
+  // Nama hari Indonesia sesuai getDay()
+  const namaHari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
 
   const fetchStats = async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/dashboard/stats')
-
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`)
-      }
-
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
       const data = await res.json()
       setStats(data)
     } catch (error) {
@@ -47,8 +56,50 @@ export default function DashboardPage() {
     }
   }
 
+  const fetchAbsensiDashboard = async () => {
+    setLoadingAbsensi(true)
+    try {
+      const now = new Date()
+      const hariIni = namaHari[now.getDay()]
+      const tanggalIni = now.toISOString().split('T')[0]
+
+      // Fetch jadwal hari ini (filter berdasarkan nama hari)
+      // serta absensi hari ini secara paralel
+      const [jadwalRes, absensiRes] = await Promise.all([
+        fetch(`/api/jadwal?hari=${hariIni}`),
+        fetch(`/api/absensi?tanggal=${tanggalIni}`)
+      ])
+      const [jadwalList, absensiList] = await Promise.all([
+        jadwalRes.json(),
+        absensiRes.json()
+      ])
+
+      // Filter jadwal yang tanggalnya = hari ini ATAU tidak punya tanggal spesifik (jadwal rutin mingguan)
+      // Jika jadwal punya field tanggal, harus cocok. Jika tidak ada tanggal, cukup cocok harinya.
+      const jadwalValid = Array.isArray(jadwalList)
+        ? jadwalList.filter(j => !j.tanggal || j.tanggal === tanggalIni || j.tanggal === '')
+        : []
+
+      setJadwalHariIni(jadwalValid)
+      setAbsensiData(Array.isArray(absensiList) ? absensiList : [])
+    } catch (error) {
+      console.error('Error fetching absensi dashboard:', error)
+    } finally {
+      setLoadingAbsensi(false)
+    }
+  }
+
+  const handleRefreshAll = () => {
+    fetchStats()
+    fetchAbsensiDashboard()
+  }
+
   useEffect(() => {
     fetchStats()
+    fetchAbsensiDashboard()
+    const handleFocus = () => { fetchStats(); fetchAbsensiDashboard() }
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
   }, [])
 
   const formatCurrency = (amount) => {
@@ -107,12 +158,12 @@ export default function DashboardPage() {
           </p>
         </div>
         <Button
-          onClick={fetchStats}
+          onClick={handleRefreshAll}
           variant="outline"
           className="self-start"
-          disabled={loading}
+          disabled={loading || loadingAbsensi}
         >
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 mr-2 ${(loading || loadingAbsensi) ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </div>
@@ -243,6 +294,144 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Absensi Hari Ini — hanya untuk Admin & Owner */}
+      {isAdminOrOwner && (() => {
+        // Deduplikasi: satu pengajar bisa punya beberapa kelas di hari yang sama
+        const pengajarUnik = []
+        const seen = new Set()
+        jadwalHariIni.forEach(j => {
+          if (!seen.has(j.pengajar_id)) {
+            seen.add(j.pengajar_id)
+            pengajarUnik.push(j)
+          }
+        })
+        const jumlahHadir = pengajarUnik.filter(j => absensiData.some(a => a.pegawai_id === j.pengajar_id)).length
+        const jumlahBelum = pengajarUnik.length - jumlahHadir
+
+        return (
+          <Card className="border-0 shadow-md">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-blue-600" />
+                    Absensi Pegawai Hari Ini
+                  </CardTitle>
+                  <CardDescription>
+                    {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2 text-xs">
+                  <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                    ✅ {jumlahHadir} Hadir
+                  </span>
+                  <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">
+                    ❌ {jumlahBelum} Belum
+                  </span>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingAbsensi ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="flex items-center space-x-3 animate-pulse">
+                      <div className="w-8 h-8 bg-gray-200 rounded-full" />
+                      <div className="flex-1 space-y-1">
+                        <div className="h-4 bg-gray-200 rounded w-1/3" />
+                        <div className="h-3 bg-gray-200 rounded w-1/4" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : pengajarUnik.length === 0 ? (
+                <div className="text-center py-6 text-gray-400">
+                  <Calendar className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+                  <p className="text-sm font-medium">Tidak ada jadwal hari ini</p>
+                  <p className="text-xs mt-1">Tambahkan jadwal di menu Jadwal untuk memantau absensi</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100">
+                        <th className="text-left py-2 px-3 text-gray-500 font-medium">Pengajar</th>
+                        <th className="text-left py-2 px-3 text-gray-500 font-medium">Jadwal</th>
+                        <th className="text-center py-2 px-3 text-gray-500 font-medium">Jam Masuk</th>
+                        <th className="text-center py-2 px-3 text-gray-500 font-medium">Jam Keluar</th>
+                        <th className="text-center py-2 px-3 text-gray-500 font-medium">Jarak</th>
+                        <th className="text-center py-2 px-3 text-gray-500 font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {pengajarUnik.map((jadwal) => {
+                        const absen = absensiData.find(a => a.pegawai_id === jadwal.pengajar_id)
+                        const sudahMasuk = !!absen?.waktu_masuk
+                        const sudahKeluar = !!absen?.waktu_keluar
+                        // Kumpulkan semua kelas pengajar ini hari ini
+                        const kelasList = jadwalHariIni
+                          .filter(j => j.pengajar_id === jadwal.pengajar_id)
+                          .map(j => `${j.kelas} (${j.waktu_mulai}–${j.waktu_selesai})`)
+                          .join(', ')
+                        return (
+                          <tr key={jadwal.pengajar_id} className="hover:bg-gray-50 transition-colors">
+                            <td className="py-2.5 px-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs flex-shrink-0">
+                                  {jadwal.pengajar_nama?.charAt(0)}
+                                </div>
+                                <span className="font-medium text-gray-900">{jadwal.pengajar_nama}</span>
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-3 text-gray-500 text-xs">{kelasList}</td>
+                            <td className="py-2.5 px-3 text-center">
+                              {sudahMasuk ? (
+                                <span className="text-green-600 font-medium">
+                                  {new Date(absen.waktu_masuk).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              ) : <span className="text-gray-300">--:--</span>}
+                            </td>
+                            <td className="py-2.5 px-3 text-center">
+                              {sudahKeluar ? (
+                                <span className="text-blue-600 font-medium">
+                                  {new Date(absen.waktu_keluar).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              ) : <span className="text-gray-300">--:--</span>}
+                            </td>
+                            <td className="py-2.5 px-3 text-center">
+                              {absen?.jarak_masuk ? (
+                                <span className="text-xs text-gray-500 flex items-center justify-center gap-1">
+                                  <MapPin className="w-3 h-3" />{absen.jarak_masuk}m
+                                </span>
+                              ) : <span className="text-gray-300">-</span>}
+                            </td>
+                            <td className="py-2.5 px-3 text-center">
+                              {sudahKeluar ? (
+                                <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">
+                                  <CheckCircle2 className="w-3 h-3" /> Selesai
+                                </span>
+                              ) : sudahMasuk ? (
+                                <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full font-medium">
+                                  <LogIn className="w-3 h-3" /> Hadir
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full font-medium">
+                                  <XCircle className="w-3 h-3" /> Belum Hadir
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )
+      })()}
 
       {/* Info Card */}
       <Card className="border-0 shadow-md bg-gradient-to-r from-blue-600 to-indigo-600 text-white">

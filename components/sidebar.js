@@ -22,40 +22,41 @@ import {
   Menu,
   X,
   ChevronRight,
-  Banknote
+  Banknote,
+  ClipboardList,
+  Calendar,
+  TrendingUp,
+  MapPin
 } from 'lucide-react'
 
 const menuItems = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['Admin', 'Pimpinan', 'Staff'] },
-  { name: 'Kesiswaan', href: '/dashboard/siswa', icon: Users, roles: ['Admin', 'Staff'] },
-  { name: 'Kepegawaian', href: '/dashboard/pegawai', icon: UserCog, roles: ['Admin'] },
-  { name: 'Akademik', href: '/dashboard/akademik', icon: BookOpen, roles: ['Admin', 'Staff'] },
-  { name: 'Keuangan', href: '/dashboard/keuangan', icon: Wallet, roles: ['Admin', 'Staff'] },
-  { name: 'Akuntansi', href: '/dashboard/akuntansi', icon: Calculator, roles: ['Admin'] },
-  { name: 'Pimpinan', href: '/dashboard/pimpinan', icon: Crown, roles: ['Admin', 'Pimpinan'] },
-  { name: 'Laporan', href: '/dashboard/laporan', icon: FileText, roles: ['Admin', 'Pimpinan'] },
-  { name: 'Payroll', href: '/dashboard/payroll', icon: Banknote, roles: ['Admin', 'Pimpinan'] },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['Owner', 'Admin'] },
+  { name: 'Pendaftaran', href: '/dashboard/pendaftaran', icon: ClipboardList, roles: ['Owner', 'Admin'] },
+  { name: 'Kesiswaan', href: '/dashboard/siswa', icon: Users, roles: ['Owner'] },
+  { name: 'Kepegawaian', href: '/dashboard/pegawai', icon: UserCog, roles: ['Owner', 'Admin'] },
+  { name: 'Jadwal', href: '/dashboard/jadwal', icon: Calendar, roles: ['Owner', 'Admin'] },
+  { name: 'Absensi', href: '/dashboard/absensi', icon: MapPin, roles: ['Owner', 'Admin', 'Pegawai', 'Guru'] },
+  { name: 'Kinerja', href: '/dashboard/kinerja', icon: TrendingUp, roles: ['Owner', 'Pegawai', 'Guru'] },
+  { name: 'Akademik', href: '/dashboard/akademik', icon: BookOpen, roles: ['Owner', 'Admin'] },
+  { name: 'Keuangan', href: '/dashboard/keuangan', icon: Wallet, roles: ['Owner', 'Admin'] },
+  { name: 'Akuntansi', href: '/dashboard/akuntansi', icon: Calculator, roles: ['Owner'] },
+  { name: 'Pimpinan', href: '/dashboard/pimpinan', icon: Crown, roles: ['Owner'] },
+  { name: 'Laporan', href: '/dashboard/laporan', icon: FileText, roles: ['Owner'] },
+  { name: 'Payroll', href: '/dashboard/payroll', icon: Banknote, roles: ['Owner', 'Admin'] },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
   const { data: session } = useSession()
   const [isOpen, setIsOpen] = useState(false)
-  const userRole = session?.user?.role || 'Staff'
+  const userRole = (session?.user?.role || 'Admin').trim()
 
-  // Helper to normalize string to Title Case (e.g., 'admin' -> 'Admin')
-  const normalizeRole = (role) => {
-    if (!role) return 'Staff'
-    return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase()
-  }
-
-  const normalizedUserRole = normalizeRole(userRole)
-
-  const filteredMenu = menuItems.filter(item => item.roles.includes(normalizedUserRole))
+  const filteredMenu = menuItems.filter(item =>
+    item.roles.map(r => r.toLowerCase()).includes(userRole.toLowerCase())
+  )
 
   return (
     <>
-      {/* Mobile Menu Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-white shadow-md lg:hidden"
@@ -63,7 +64,6 @@ export function Sidebar() {
         {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
       </button>
 
-      {/* Overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -71,13 +71,11 @@ export function Sidebar() {
         />
       )}
 
-      {/* Sidebar */}
       <aside className={cn(
         "fixed top-0 left-0 z-40 h-screen w-64 bg-white border-r border-gray-200 transition-transform duration-300 lg:translate-x-0",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex flex-col h-full">
-          {/* Logo */}
           <div className="h-auto py-4 flex items-center justify-center px-6 border-b border-gray-200">
             <div className="relative w-full h-16">
               <Image
@@ -90,7 +88,6 @@ export function Sidebar() {
             </div>
           </div>
 
-          {/* Navigation */}
           <ScrollArea className="flex-1 px-3 py-4">
             <nav className="space-y-1">
               {filteredMenu.map((item) => {
@@ -119,27 +116,54 @@ export function Sidebar() {
             </nav>
           </ScrollArea>
 
-          {/* User Profile */}
           <div className="p-4 border-t border-gray-200">
             <div className="flex items-center mb-3">
               <Avatar className="h-10 w-10">
-                <AvatarFallback className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white">
-                  {session?.user?.name?.charAt(0) || 'U'}
+                <AvatarFallback className={cn(
+                  "text-white font-bold",
+                  userRole === 'Owner' ? "bg-purple-600" : "bg-blue-500"
+                )}>
+                  {session?.user?.name?.charAt(0)?.toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
-              <div className="ml-3 flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
+              <div className="ml-3 overflow-hidden">
+                <p className="text-sm font-semibold text-gray-900 truncate">
                   {session?.user?.name || 'User'}
                 </p>
                 <p className="text-xs text-gray-500 truncate">
-                  {session?.user?.role || 'Role'}
+                  {userRole}
                 </p>
               </div>
             </div>
             <Button
               variant="outline"
               className="w-full justify-start text-gray-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50"
-              onClick={() => signOut({ callbackUrl: '/login' })}
+              onClick={async () => {
+                try {
+                  // Clear all storage SEBELUM logout
+                  if (typeof window !== 'undefined') {
+                    localStorage.clear()
+                    sessionStorage.clear()
+
+                    // Clear all cookies (optional)
+                    document.cookie.split(";").forEach((c) => {
+                      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                    });
+                  }
+
+                  // Logout dengan redirect paksa
+                  await signOut({
+                    callbackUrl: '/login',
+                    redirect: true
+                  })
+                } catch (error) {
+                  console.error('Logout error:', error)
+                  // Paksa redirect manual jika signOut gagal
+                  if (typeof window !== 'undefined') {
+                    window.location.href = '/login'
+                  }
+                }
+              }}
             >
               <LogOut className="w-4 h-4 mr-2" />
               Keluar

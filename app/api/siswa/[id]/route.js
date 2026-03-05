@@ -16,6 +16,44 @@ const normalizeTanggalMasuk = (value) => {
   return parsed
 }
 
+export async function GET(request, { params }) {
+    try {
+        const { id } = params
+
+        if (!ObjectId.isValid(id)) {
+            return NextResponse.json(
+                { error: 'Invalid ID format' },
+                { status: 400 }
+            )
+        }
+
+        const client = await clientPromise
+        const db = client.db(process.env.DB_NAME)
+
+        const siswa = await db.collection('siswa').findOne({ _id: new ObjectId(id) })
+
+        if (!siswa) {
+            return NextResponse.json(
+                { error: 'Siswa tidak ditemukan' },
+                { status: 404 }
+            )
+        }
+
+        const formattedSiswa = {
+            ...siswa,
+            id: siswa._id.toString()
+        }
+
+        return NextResponse.json(formattedSiswa)
+    } catch (error) {
+        console.error('Error fetching siswa:', error)
+        return NextResponse.json(
+            { error: 'Gagal memuat data siswa' },
+            { status: 500 }
+        )
+    }
+}
+
 export async function PUT(request, { params }) {
   try {
     const { id } = params
@@ -82,4 +120,3 @@ export async function DELETE(request, { params }) {
       { status: 500 }
     )
   }
-}
