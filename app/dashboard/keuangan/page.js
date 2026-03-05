@@ -22,9 +22,9 @@ const SPP_TARIF = { SD: 200000, SMP: 250000, SMA: 250000 }
 
 const getSPPTarif = (kelas = '') => {
   const k = kelas.toUpperCase()
-  if (k.includes('SD') || k.match(/^[1-6]/)) return SPP_TARIF.SD
-  if (k.includes('SMP') || k.match(/^[7-9]/)) return SPP_TARIF.SMP
-  if (k.includes('SMA') || k.match(/^1[0-2]/)) return SPP_TARIF.SMA
+  if (k.includes('SMA') || k.match(/^(10|11|12|X|XI|XII)\b/)) return SPP_TARIF.SMA
+  if (k.includes('SMP') || k.match(/^(7|8|9|VII|VIII|IX)\b/)) return SPP_TARIF.SMP
+  if (k.includes('SD') || k.match(/^[1-6]\b/)) return SPP_TARIF.SD
   return SPP_TARIF.SD
 }
 
