@@ -297,10 +297,10 @@ export default function KeuanganPage() {
       
       toast.success(`Pembayaran ${item.namaSiswa} berhasil!`)
       
-      // ✅ Refresh data dengan timestamp untuk避免 cache
-      const resBaru = await fetch(`/api/pembayaran?_t=${Date.now()}`)
-      const dataBaru = await resBaru.json()
-      setPembayaran(Array.isArray(dataBaru) ? dataBaru : [])
+      // ✅ Langsung update state lokal agar card langsung berubah
+      setPembayaran(prev => prev.map(p => 
+        p.id === item.id ? { ...p, status: 'lunas' } : p
+      ))
       
     } catch (error) {
       toast.error(error.message)
