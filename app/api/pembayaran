@@ -37,11 +37,28 @@ export async function GET(request) {
       .sort({ createdAt: -1 })
       .toArray()
 
+    // ✅ Migrasi: pastikan SEMUA data punya field 'id'
+    await Promise.all(
+      pembayaran
+        .filter(p => !p.id)  // yang belum punya id
+        .map(p => 
+          db.collection('pembayaran').updateOne(
+            { _id: p._id },
+            { $set: { id: p._id.toString() } }
+          )
+        )
+    )
+
+    // Ambil ulang data yang sudah di-migrate
+    const updatedPembayaran = await db.collection('pembayaran')
+      .find({})
+      .sort({ createdAt: -1 })
+      .toArray()
+
     // Tambahkan field `id` string agar frontend bisa pakai p.id
-    const result = pembayaran.map(p => ({
+    const result = updatedPembayaran.map(p => ({
       ...p,
-      id: p._id.toString(),
-      idDebug: `original _id: ${p._id.toString()}, type: ${typeof p._id}`
+      id: p._id.toString()
     }))
 
     return NextResponse.json(result)
