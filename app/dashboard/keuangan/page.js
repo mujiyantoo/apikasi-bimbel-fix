@@ -297,15 +297,20 @@ export default function KeuanganPage() {
       
       toast.success(`Pembayaran ${item.namaSiswa} berhasil!`)
       
-      // ✅ Debug: log perubahan
-      console.log('Updating payment:', item.id, 'to lunas')
+      // ✅ Debug: log semua ID untuk troubleshooting
+      console.log('=== DEBUG PAYMENT ===')
+      console.log('item.id:', item.id)
+      console.log('item._id:', item._id)
+      console.log('item:', item)
       
       // ✅ Langsung update state lokal agar card langsung berubah
       setPembayaran(prev => {
-        const updated = prev.map(p => 
-          (p.id === item.id || p._id === item.id) ? { ...p, status: 'lunas' } : p
-        )
-        console.log('Updated payments:', updated.filter(p => p.status === 'pending').length, 'pending left')
+        const updated = prev.map(p => {
+          const match = (p.id === item.id || p._id === item.id || p.id === item._id || p._id === item._id)
+          console.log(`Checking p.id=${p.id}, p._id=${p._id} vs item.id=${item.id}, item._id=${item._id} => ${match}`)
+          return match ? { ...p, status: 'lunas' } : p
+        })
+        console.log('Pending count after update:', updated.filter(p => p.status === 'pending').length)
         return updated
       })
       
