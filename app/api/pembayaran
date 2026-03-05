@@ -11,11 +11,14 @@ const bulanOptions = [
 
 // ✅ Helper: cari query by _id (ObjectId) atau id (UUID string)
 function buildQuery(id) {
-  try {
-    return { _id: new ObjectId(id) }
-  } catch {
-    return { id: id }
+  // ✅ Coba ObjectId dulu - ini akan berhasil untuk MongoDB _id
+  if (/^[0-9a-fA-F]{24}$/.test(id)) {
+    try {
+      return { _id: new ObjectId(id) }
+    } catch {}
   }
+  // ✅ Kalau bukan ObjectId format, cari berdasarkan field 'id' (UUID string)
+  return { id: id }
 }
 
 // ============================================
@@ -37,7 +40,8 @@ export async function GET(request) {
     // Tambahkan field `id` string agar frontend bisa pakai p.id
     const result = pembayaran.map(p => ({
       ...p,
-      id: p._id.toString()
+      id: p._id.toString(),
+      idDebug: `original _id: ${p._id.toString()}, type: ${typeof p._id}`
     }))
 
     return NextResponse.json(result)
@@ -71,6 +75,12 @@ export async function POST(request) {
     }
 
     const result = await db.collection('pembayaran').insertOne(pembayaranData)
+    
+    // ✅ Penting: update document dengan field 'id' agar bisa di-update потом
+    await db.collection('pembayaran').updateOne(
+      { _id: result.insertedId },
+      { $set: { id: result.insertedId.toString() } }
+    )
 
     return NextResponse.json(
       { message: 'Pembayaran berhasil ditambahkan', id: result.insertedId },
