@@ -278,6 +278,32 @@ export default function KeuanganPage() {
     setIsDialogOpen(true)
   }
 
+  // ✅ Fungsi langsung proses pembayaran (tanpa dialog)
+  const handleBayarLangsung = async (item) => {
+    if (!confirm(`Konfirmasi pembayaran ${item.namaSiswa} sebesar ${formatCurrency(item.jumlah)}?`)) {
+      return
+    }
+    
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/pembayaran?id=${item.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'lunas' })
+      })
+      
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Terjadi kesalahan')
+      
+      toast.success(`Pembayaran ${item.namaSiswa} berhasil!`)
+      fetchPembayaran()
+    } catch (error) {
+      toast.error(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleBayar = (item) => {
     setBayarItem(item)
     setFormData({
@@ -731,7 +757,7 @@ Bag. Keuangan BIN Bimbel`
                         )}
                         {activeTab === 'tagihan' && (
                           <TableCell>
-                            <Button size="sm" onClick={() => handleBayar(p)} className="bg-green-600 hover:bg-green-700 text-white h-7 px-3 text-xs">
+                            <Button size="sm" onClick={() => handleBayarLangsung(p)} className="bg-green-600 hover:bg-green-700 text-white h-7 px-3 text-xs">
                               <CheckCircle className="w-3 h-3 mr-1" /> Bayar
                             </Button>
                           </TableCell>
