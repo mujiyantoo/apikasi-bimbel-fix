@@ -281,6 +281,49 @@ export default function KeuanganPage() {
     setIsDialogOpen(true)
   }
 
+  // ✅ Fungsi langsung proses pembayaran (tanpa dialog)
+  const handleBayarLangsung = async (item) => {
+    if (!confirm(`Konfirmasi pembayaran ${item.namaSiswa} sebesar ${formatCurrency(item.jumlah)}?`)) {
+      return
+    }
+    
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/pembayaran?id=${item.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'lunas' })
+      })
+      
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Terjadi kesalahan')
+      
+      toast.success(`Pembayaran ${item.namaSiswa} berhasil!`)
+      
+      // ✅ Debug: log semua ID untuk troubleshooting
+      console.log('=== DEBUG PAYMENT ===')
+      console.log('item.id:', item.id)
+      console.log('item._id:', item._id)
+      console.log('item:', item)
+      
+      // ✅ Langsung update state lokal agar card langsung berubah
+      setPembayaran(prev => {
+        const updated = prev.map(p => {
+          const match = (p.id === item.id || p._id === item.id || p.id === item._id || p._id === item._id)
+          console.log(`Checking p.id=${p.id}, p._id=${p._id} vs item.id=${item.id}, item._id=${item._id} => ${match}`)
+          return match ? { ...p, status: 'lunas' } : p
+        })
+        console.log('Pending count after update:', updated.filter(p => p.status === 'pending').length)
+        return updated
+      })
+      
+    } catch (error) {
+      toast.error(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleBayar = (item) => {
     setBayarItem(item)
     setFormData({
@@ -834,7 +877,7 @@ Bag. Keuangan BIN Bimbel`
                         )}
                         {activeTab === 'tagihan' && (
                           <TableCell>
-                            <Button size="sm" onClick={() => handleBayar(p)} className="bg-green-600 hover:bg-green-700 text-white h-7 px-3 text-xs">
+                            <Button size="sm" onClick={() => handleBayarLangsung(p)} className="bg-green-600 hover:bg-green-700 text-white h-7 px-3 text-xs">
                               <CheckCircle className="w-3 h-3 mr-1" /> Bayar
                             </Button>
                           </TableCell>
