@@ -877,7 +877,7 @@ Bag. Keuangan BIN Bimbel`
                         )}
                         {activeTab === 'tagihan' && (
                           <TableCell>
-                            <Button size="sm" onClick={() => handleBayarLangsung(p)} className="bg-green-600 hover:bg-green-700 text-white h-7 px-3 text-xs">
+                            <Button size="sm" onClick={() => handleBayar(p)} className="bg-green-600 hover:bg-green-700 text-white h-7 px-3 text-xs">
                               <CheckCircle className="w-3 h-3 mr-1" /> Bayar
                             </Button>
                           </TableCell>
