@@ -25,10 +25,18 @@ export async function GET(request) {
       jadwal.map(async (item) => {
         let pengajar = null
         try {
-          // DIUBAH: cari by id UUID, bukan ObjectId
-          pengajar = await db.collection('pegawai').findOne({ id: item.pengajar_id })
+          // Coba cari sebagai ObjectId (_id)
+          try {
+            if (ObjectId.isValid(item.pengajar_id)) {
+              pengajar = await db.collection('pegawai').findOne({ _id: new ObjectId(item.pengajar_id) })
+            }
+          } catch (e) { }
+          // Fallback: cari sebagai string field id
+          if (!pengajar) {
+            pengajar = await db.collection('pegawai').findOne({ id: item.pengajar_id })
+          }
         } catch (e) {
-          console.error('Invalid pengajar_id:', item.pengajar_id)
+          console.error('Error lookup pengajar:', item.pengajar_id, e)
         }
         return {
           ...item,
