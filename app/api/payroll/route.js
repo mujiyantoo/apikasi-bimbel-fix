@@ -26,22 +26,37 @@ export async function GET(request) {
         // Prioritas 1: ambil dari field pengajar_nama yang tersimpan di dokumen kinerja
         let pengajar_nama = item.pengajar_nama || ''
 
-        // Prioritas 2: kalau kosong, baru lookup ke collection pegawai
-       // Prioritas 2: lookup ke collection pegawai pakai field id
-if (!pengajar_nama) {
-  try {
-    const pegawai = await db.collection('pegawai').findOne({ id: pid })
-    pengajar_nama = pegawai?.nama || ''
-  } catch (e) {}
-}
+        // Prioritas 2: lookup ke collection pegawai via _id (ObjectId) atau string id
+        if (!pengajar_nama) {
+          try {
+            let pegawai = null
+            // Coba cari sebagai ObjectId
+            try {
+              const { ObjectId: ObjId } = await import('mongodb')
+              pegawai = await db.collection('pegawai').findOne({ _id: new ObjId(pid) })
+            } catch (e) { }
+            // Fallback: cari sebagai string field
+            if (!pegawai) {
+              pegawai = await db.collection('pegawai').findOne({ id: pid })
+            }
+            pengajar_nama = pegawai?.nama || ''
+          } catch (e) { }
+        }
 
-// Prioritas 3: cari di users
-if (!pengajar_nama) {
-  try {
-    const user = await db.collection('users').findOne({ id: pid })
-    pengajar_nama = user?.nama || user?.name || 'Tidak diketahui'
-  } catch (e) {}
-}
+        // Prioritas 3: cari di users
+        if (!pengajar_nama) {
+          try {
+            let user = null
+            try {
+              const { ObjectId: ObjId } = await import('mongodb')
+              user = await db.collection('users').findOne({ _id: new ObjId(pid) })
+            } catch (e) { }
+            if (!user) {
+              user = await db.collection('users').findOne({ id: pid })
+            }
+            pengajar_nama = user?.nama || user?.name || 'Tidak diketahui'
+          } catch (e) { }
+        }
 
         payrollMap[pid] = {
           pengajar_id: pid,
