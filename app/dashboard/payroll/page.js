@@ -22,8 +22,7 @@ export default function PayrollPage() {
   const [expandedRows, setExpandedRows] = useState({})
   const [deletingId, setDeletingId] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null) // { id, nama, tanggal }
-
-  const isOwner = session?.user?.role === 'owner'
+  const isOwner = session?.user?.role?.toLowerCase() === 'owner'
 
   const bulanOptions = [
     { value: 1, label: 'Januari' }, { value: 2, label: 'Februari' },
