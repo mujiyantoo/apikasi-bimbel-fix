@@ -84,7 +84,26 @@ export async function GET(request) {
       })
     }
 
-    const payrollArray = Object.values(payrollMap)
+    // Gabungkan entri yang punya pengajar_nama sama (deduplikasi by nama)
+    const mergedMap = {}
+    for (const entry of Object.values(payrollMap)) {
+      const key = (entry.pengajar_nama || 'Tidak diketahui').trim().toLowerCase()
+      if (!mergedMap[key]) {
+        mergedMap[key] = { ...entry, rincian: [...entry.rincian] }
+      } else {
+        mergedMap[key].total_gaji += entry.total_gaji
+        mergedMap[key].total_jam += entry.total_jam
+        mergedMap[key].jumlah_sesi += entry.jumlah_sesi
+        mergedMap[key].rincian = [...mergedMap[key].rincian, ...entry.rincian]
+      }
+    }
+
+    // Urutkan rincian per pengajar berdasarkan tanggal
+    for (const entry of Object.values(mergedMap)) {
+      entry.rincian.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal))
+    }
+
+    const payrollArray = Object.values(mergedMap)
       .sort((a, b) => b.total_gaji - a.total_gaji)
 
     return NextResponse.json(payrollArray)
