@@ -59,7 +59,8 @@ export default function JadwalPage() {
     try {
       const res = await fetch('/api/pegawai')
       const data = await res.json()
-      setPegawai(Array.isArray(data) ? data : [])
+      const pegawaiList = data.success && data.data ? data.data : data
+      setPegawai(Array.isArray(pegawaiList) ? pegawaiList : [])
     } catch (e) { console.error(e) }
   }
 
@@ -212,9 +213,9 @@ export default function JadwalPage() {
             <p>Kelola jadwal mengajar Bina Insan Nusantara</p>
           </div>
           <div className="ha">
-            <button className="btn-r" onClick={fetchJadwal}><RefreshCw size={12}/> Refresh</button>
+            <button className="btn-r" onClick={fetchJadwal}><RefreshCw size={12} /> Refresh</button>
             <button className="btn-p" onClick={() => { resetForm(); setEditingId(null); setIsDialogOpen(true) }}>
-              <Plus size={13}/> Tambah Jadwal
+              <Plus size={13} /> Tambah Jadwal
             </button>
           </div>
         </div>
@@ -222,27 +223,27 @@ export default function JadwalPage() {
         {/* Stats */}
         <div className="stats">
           <div className="sc"><div className="sc-l">Total Jadwal</div><div className="sc-v">{jadwal.length}</div></div>
-          <div className="sc"><div className="sc-l">Pengajar</div><div className="sc-v">{[...new Set(jadwal.map(j=>j.pengajar_id))].length}</div></div>
-          <div className="sc"><div className="sc-l">Kelas</div><div className="sc-v">{[...new Set(jadwal.map(j=>j.kelas))].length}</div></div>
-          <div className="sc"><div className="sc-l">Mapel</div><div className="sc-v">{[...new Set(jadwal.map(j=>j.mata_pelajaran))].length}</div></div>
+          <div className="sc"><div className="sc-l">Pengajar</div><div className="sc-v">{[...new Set(jadwal.map(j => j.pengajar_id))].length}</div></div>
+          <div className="sc"><div className="sc-l">Kelas</div><div className="sc-v">{[...new Set(jadwal.map(j => j.kelas))].length}</div></div>
+          <div className="sc"><div className="sc-l">Mapel</div><div className="sc-v">{[...new Set(jadwal.map(j => j.mata_pelajaran))].length}</div></div>
         </div>
 
         {/* Filter */}
         <div className="fc">
           <div className="fg">
             <label>Filter Hari</label>
-            <select className="fs" value={filterHari} onChange={(e)=>setFilterHari(e.target.value)}>
+            <select className="fs" value={filterHari} onChange={(e) => setFilterHari(e.target.value)}>
               <option value="all">Semua Hari</option>
-              {hariOptions.map(h=><option key={h} value={h}>{h}</option>)}
+              {hariOptions.map(h => <option key={h} value={h}>{h}</option>)}
             </select>
           </div>
           <div className="fg">
             <label>Filter Tanggal</label>
-            <input className="fi" type="date" value={filterTanggal} onChange={(e)=>setFilterTanggal(e.target.value)}/>
+            <input className="fi" type="date" value={filterTanggal} onChange={(e) => setFilterTanggal(e.target.value)} />
           </div>
           <div className="eb">
-            <button className="be" onClick={exportToExcel}><FileDown size={12}/> Excel</button>
-            <button className="be" onClick={exportToPDF}><FileDown size={12}/> PDF</button>
+            <button className="be" onClick={exportToExcel}><FileDown size={12} /> Excel</button>
+            <button className="be" onClick={exportToPDF}><FileDown size={12} /> PDF</button>
           </div>
         </div>
 
@@ -250,9 +251,9 @@ export default function JadwalPage() {
         <div className="tc">
           <div className="tw">
             {loading ? (
-              <div className="ls"><div className="ld"><span/><span/><span/></div></div>
+              <div className="ls"><div className="ld"><span /><span /><span /></div></div>
             ) : jadwal.length === 0 ? (
-              <div className="es"><Calendar size={40}/><p>Belum ada jadwal tersedia</p></div>
+              <div className="es"><Calendar size={40} /><p>Belum ada jadwal tersedia</p></div>
             ) : (
               <table>
                 <thead>
@@ -262,19 +263,19 @@ export default function JadwalPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {jadwal.map((item)=>(
+                  {jadwal.map((item) => (
                     <tr key={item.id}>
-                      <td><span className="hb" style={{background:hariColors[item.hari]||'#6b7280'}}>{item.hari}</span></td>
-                      <td><div className="ci"><Calendar size={11}/>{new Date(item.tanggal).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})}</div></td>
+                      <td><span className="hb" style={{ background: hariColors[item.hari] || '#6b7280' }}>{item.hari}</span></td>
+                      <td><div className="ci"><Calendar size={11} />{new Date(item.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</div></td>
                       <td><span className="kb">{item.kelas}</span></td>
-                      <td><div className="ci"><Clock size={11}/>{item.waktu_mulai}–{item.waktu_selesai}</div></td>
+                      <td><div className="ci"><Clock size={11} />{item.waktu_mulai}–{item.waktu_selesai}</div></td>
                       <td><span className="mp">{item.mata_pelajaran}</span></td>
-                      <td><div className="ci"><User size={11}/>{item.pengajar_nama}</div></td>
-                      <td><div className="ci"><MapPin size={11}/>{item.ruangan}</div></td>
+                      <td><div className="ci"><User size={11} />{item.pengajar_nama}</div></td>
+                      <td><div className="ci"><MapPin size={11} />{item.ruangan}</div></td>
                       <td>
                         <div className="ab">
-                          <button className="bi ed" onClick={()=>handleEdit(item)}><Edit size={11}/></button>
-                          <button className="bi dl" onClick={()=>handleDelete(item.id)}><Trash2 size={11}/></button>
+                          <button className="bi ed" onClick={() => handleEdit(item)}><Edit size={11} /></button>
+                          <button className="bi dl" onClick={() => handleDelete(item.id)}><Trash2 size={11} /></button>
                         </div>
                       </td>
                     </tr>
@@ -288,36 +289,36 @@ export default function JadwalPage() {
 
       {/* MODAL */}
       {isDialogOpen && (
-        <div className="mo" onClick={(e)=>{if(e.target===e.currentTarget)setIsDialogOpen(false)}}>
+        <div className="mo" onClick={(e) => { if (e.target === e.currentTarget) setIsDialogOpen(false) }}>
           <div className="mb">
             <div className="mh">
               <div className="mhl">
-                <div className="mi"><Calendar size={14} color="white"/></div>
+                <div className="mi"><Calendar size={14} color="white" /></div>
                 <p className="mt">{editingId ? 'Edit Jadwal' : 'Tambah Jadwal Baru'}</p>
               </div>
-              <button className="mx" onClick={()=>setIsDialogOpen(false)}><X size={13}/></button>
+              <button className="mx" onClick={() => setIsDialogOpen(false)}><X size={13} /></button>
             </div>
 
-            <form onSubmit={handleSubmit} style={{display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
               <div className="mbody">
 
                 <div className="fsec">
                   <p className="st">📅 Waktu & Hari</p>
                   <div className="f2">
                     <Field label="Hari *">
-                      <select style={inp} value={formData.hari} onChange={(e)=>setFormData({...formData,hari:e.target.value})} required>
+                      <select style={inp} value={formData.hari} onChange={(e) => setFormData({ ...formData, hari: e.target.value })} required>
                         <option value="">Pilih Hari</option>
-                        {hariOptions.map(h=><option key={h} value={h}>{h}</option>)}
+                        {hariOptions.map(h => <option key={h} value={h}>{h}</option>)}
                       </select>
                     </Field>
                     <Field label="Tanggal *">
-                      <input style={inp} type="date" value={formData.tanggal} onChange={(e)=>setFormData({...formData,tanggal:e.target.value})} required/>
+                      <input style={inp} type="date" value={formData.tanggal} onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })} required />
                     </Field>
                     <Field label="Waktu Mulai *">
-                      <input style={inp} type="time" value={formData.waktu_mulai} onChange={(e)=>setFormData({...formData,waktu_mulai:e.target.value})} required/>
+                      <input style={inp} type="time" value={formData.waktu_mulai} onChange={(e) => setFormData({ ...formData, waktu_mulai: e.target.value })} required />
                     </Field>
                     <Field label="Waktu Selesai *">
-                      <input style={inp} type="time" value={formData.waktu_selesai} onChange={(e)=>setFormData({...formData,waktu_selesai:e.target.value})} required/>
+                      <input style={inp} type="time" value={formData.waktu_selesai} onChange={(e) => setFormData({ ...formData, waktu_selesai: e.target.value })} required />
                     </Field>
                   </div>
                 </div>
@@ -326,10 +327,10 @@ export default function JadwalPage() {
                   <p className="st">📚 Info Kelas</p>
                   <div className="f2">
                     <Field label="Kelas *">
-                      <input style={inp} value={formData.kelas} onChange={(e)=>setFormData({...formData,kelas:e.target.value})} required placeholder="Contoh: 7A"/>
+                      <input style={inp} value={formData.kelas} onChange={(e) => setFormData({ ...formData, kelas: e.target.value })} required placeholder="Contoh: 7A" />
                     </Field>
                     <Field label="Mata Pelajaran *">
-                      <input style={inp} value={formData.mata_pelajaran} onChange={(e)=>setFormData({...formData,mata_pelajaran:e.target.value})} required placeholder="Matematika"/>
+                      <input style={inp} value={formData.mata_pelajaran} onChange={(e) => setFormData({ ...formData, mata_pelajaran: e.target.value })} required placeholder="Matematika" />
                     </Field>
                   </div>
                 </div>
@@ -338,13 +339,13 @@ export default function JadwalPage() {
                   <p className="st">👨‍🏫 Pengajar & Lokasi</p>
                   <div className="f1">
                     <Field label="Pengajar *">
-                      <select style={inp} value={formData.pengajar_id} onChange={(e)=>setFormData({...formData,pengajar_id:e.target.value})} required>
+                      <select style={inp} value={formData.pengajar_id} onChange={(e) => setFormData({ ...formData, pengajar_id: e.target.value })} required>
                         <option value="">Pilih Pengajar</option>
-                        {pegawai.map(p=><option key={p.id} value={p.id}>{p.nama}</option>)}
+                        {pegawai.map(p => <option key={p.id} value={p.id}>{p.nama}</option>)}
                       </select>
                     </Field>
                     <Field label="Ruangan *">
-                      <input style={inp} value={formData.ruangan} onChange={(e)=>setFormData({...formData,ruangan:e.target.value})} required placeholder="Contoh: Ruang A1"/>
+                      <input style={inp} value={formData.ruangan} onChange={(e) => setFormData({ ...formData, ruangan: e.target.value })} required placeholder="Contoh: Ruang A1" />
                     </Field>
                   </div>
                 </div>
@@ -352,7 +353,7 @@ export default function JadwalPage() {
               </div>
 
               <div className="mf">
-                <button type="button" className="bc" onClick={()=>setIsDialogOpen(false)}>Batal</button>
+                <button type="button" className="bc" onClick={() => setIsDialogOpen(false)}>Batal</button>
                 <button type="submit" className="bs">{editingId ? '✓ Update' : '+ Simpan'}</button>
               </div>
             </form>

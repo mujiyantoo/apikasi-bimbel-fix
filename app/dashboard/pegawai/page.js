@@ -63,7 +63,8 @@ export default function PegawaiPage() {
       const res = await fetch(`/api/pegawai?${params}`)
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
       const data = await res.json()
-      setPegawai(Array.isArray(data) ? data : [])
+      const pegawaiData = data.success && data.data ? data.data : data
+      setPegawai(Array.isArray(pegawaiData) ? pegawaiData : [])
     } catch (error) {
       console.error('Error fetching pegawai:', error)
       toast.error('Gagal memuat data pegawai')

@@ -53,7 +53,8 @@ export default function PengaturanPage() {
     try {
       const res = await fetch('/api/pegawai')
       const data = await res.json()
-      setUsers(Array.isArray(data) ? data : [])
+      const pegawaiList = data.success && data.data ? data.data : data
+      setUsers(Array.isArray(pegawaiList) ? pegawaiList : [])
     } catch (err) {
       console.error(err)
     } finally {
@@ -428,10 +429,10 @@ export default function PengaturanPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {pesanLokasi && (
-                  <div className={'rounded-lg p-3 text-sm ' + 
-                    (pesanLokasi.type === 'success' ? 'bg-green-100 text-green-700' : 
-                     pesanLokasi.type === 'info' ? 'bg-blue-100 text-blue-700' : 
-                     'bg-red-100 text-red-700')}>
+                  <div className={'rounded-lg p-3 text-sm ' +
+                    (pesanLokasi.type === 'success' ? 'bg-green-100 text-green-700' :
+                      pesanLokasi.type === 'info' ? 'bg-blue-100 text-blue-700' :
+                        'bg-red-100 text-red-700')}>
                     {pesanLokasi.text}
                   </div>
                 )}

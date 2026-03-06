@@ -16,9 +16,9 @@ export default function LaporanPage() {
       // Dynamic import for client-side only
       const { jsPDF } = await import('jspdf')
       const autoTable = (await import('jspdf-autotable')).default
-      
+
       const doc = new jsPDF()
-      
+
       // Fetch data based on type
       let data = []
       let title = ''
@@ -31,7 +31,8 @@ export default function LaporanPage() {
         columns = ['No', 'Nama', 'NIS', 'Kelas', 'Jenis Kelamin', 'Telepon']
       } else if (type === 'pegawai') {
         const res = await fetch('/api/pegawai')
-        data = await res.json()
+        const rawData = await res.json()
+        data = rawData.success && rawData.data ? rawData.data : rawData
         title = 'Laporan Data Pegawai'
         columns = ['No', 'Nama', 'NIP', 'Jabatan', 'Jenis Kelamin', 'Telepon']
       }
@@ -73,7 +74,7 @@ export default function LaporanPage() {
     setExporting(type + '-excel')
     try {
       const XLSX = await import('xlsx')
-      
+
       let data = []
       let filename = ''
 
@@ -92,7 +93,8 @@ export default function LaporanPage() {
         }))
       } else if (type === 'pegawai') {
         const res = await fetch('/api/pegawai')
-        data = await res.json()
+        const rawData = await res.json()
+        data = rawData.success && rawData.data ? rawData.data : rawData
         filename = 'data-pegawai'
         data = data.map((item, index) => ({
           'No': index + 1,

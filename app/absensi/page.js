@@ -65,7 +65,8 @@ export default function AbsensiPage() {
       const tahun = new Date().getFullYear()
       const resPegawai = await fetch('/api/pegawai')
       const dataPegawai = await resPegawai.json()
-      const list = Array.isArray(dataPegawai) ? dataPegawai : []
+      const pegawaiList = dataPegawai.success && dataPegawai.data ? dataPegawai.data : dataPegawai
+      const list = Array.isArray(pegawaiList) ? pegawaiList : []
       const pegawaiSaya = list.find(p => p.nama?.toLowerCase() === session.user.name?.toLowerCase())
       if (!pegawaiSaya) { setKinerjaRingkasan({ jumlah: 0, total: 0 }); return }
       const res = await fetch(`/api/kinerja?pengajar_id=${pegawaiSaya.id}&bulan=${bulan}&tahun=${tahun}`)
