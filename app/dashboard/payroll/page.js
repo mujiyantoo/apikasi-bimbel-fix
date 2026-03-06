@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ChevronDown, ChevronUp, RefreshCw, FileDown, DollarSign, Clock, Calendar, Printer } from 'lucide-react'
+import { ChevronDown, ChevronUp, RefreshCw, FileDown, DollarSign, Clock, Calendar, Printer, Trash2 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
@@ -20,6 +20,10 @@ export default function PayrollPage() {
   const [filterBulan, setFilterBulan] = useState(new Date().getMonth() + 1)
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear())
   const [expandedRows, setExpandedRows] = useState({})
+  const [deletingId, setDeletingId] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(null) // { id, nama, tanggal }
+
+  const isOwner = session?.user?.role === 'owner'
 
   const bulanOptions = [
     { value: 1, label: 'Januari' }, { value: 2, label: 'Februari' },
@@ -40,6 +44,23 @@ export default function PayrollPage() {
       console.error('Error:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDeleteKinerja = async (kinerjaId) => {
+    setDeletingId(kinerjaId)
+    try {
+      const res = await fetch('/api/kinerja?id=' + kinerjaId, { method: 'DELETE' })
+      if (res.ok) {
+        setConfirmDelete(null)
+        await fetchPayroll()
+      } else {
+        alert('Gagal menghapus data kinerja')
+      }
+    } catch (e) {
+      alert('Terjadi kesalahan')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -438,7 +459,18 @@ export default function PayrollPage() {
                           <div key={r.id} className="bg-gray-50 rounded-lg p-3 text-xs space-y-1">
                             <div className="flex justify-between items-center">
                               <span className="font-semibold text-gray-700">{new Date(r.tanggal).toLocaleDateString('id-ID')}</span>
-                              <span className="font-bold text-green-600">{formatRupiah(r.gaji)}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-green-600">{formatRupiah(r.gaji)}</span>
+                                {isOwner && (
+                                  <button
+                                    onClick={() => setConfirmDelete({ id: r.id, nama: item.pengajar_nama, tanggal: new Date(r.tanggal).toLocaleDateString('id-ID'), keterangan: r.keterangan })}
+                                    className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-red-50 hover:bg-red-100 border border-red-200 text-red-500 transition-all active:scale-95"
+                                    title="Hapus"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
                             <div className="flex gap-2 text-gray-500">
                               <span>{r.jam_mulai} - {r.jam_selesai}</span>
@@ -470,6 +502,7 @@ export default function PayrollPage() {
                               <th className="px-3 py-2 text-left text-xs">Kategori</th>
                               <th className="px-3 py-2 text-left text-xs">Keterangan</th>
                               <th className="px-3 py-2 text-right text-xs">Gaji</th>
+                              {isOwner && <th className="px-3 py-2 text-center text-xs">Hapus</th>}
                             </tr>
                           </thead>
                           <tbody className="divide-y">
@@ -486,6 +519,17 @@ export default function PayrollPage() {
                                 </td>
                                 <td className="px-3 py-2 text-gray-500 italic text-xs">{r.keterangan || '-'}</td>
                                 <td className="px-3 py-2 text-right font-semibold text-green-600 whitespace-nowrap">{formatRupiah(r.gaji)}</td>
+                                {isOwner && (
+                                  <td className="px-3 py-2 text-center">
+                                    <button
+                                      onClick={() => setConfirmDelete({ id: r.id, nama: item.pengajar_nama, tanggal: new Date(r.tanggal).toLocaleDateString('id-ID'), keterangan: r.keterangan })}
+                                      className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 text-red-500 transition-all active:scale-95"
+                                      title="Hapus"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </td>
+                                )}
                               </tr>
                             ))}
                           </tbody>
@@ -515,6 +559,39 @@ export default function PayrollPage() {
           )}
         </CardContent>
       </Card>
+      {/* Dialog Konfirmasi Hapus — Owner Only */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 rounded-xl">
+                <Trash2 className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <p className="font-bold text-gray-900">Hapus Data Kinerja?</p>
+                <p className="text-xs text-gray-500">Tindakan ini tidak bisa dibatalkan</p>
+              </div>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-3 text-sm space-y-1">
+              <p className="text-gray-700"><span className="font-semibold">Pengajar:</span> {confirmDelete.nama}</p>
+              <p className="text-gray-700"><span className="font-semibold">Tanggal:</span> {confirmDelete.tanggal}</p>
+              {confirmDelete.keterangan && <p className="text-gray-500 italic text-xs">{confirmDelete.keterangan}</p>}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="flex-1 py-2 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-all"
+                disabled={!!deletingId}
+              >Batal</button>
+              <button
+                onClick={() => handleDeleteKinerja(confirmDelete.id)}
+                disabled={!!deletingId}
+                className="flex-1 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-all disabled:opacity-60"
+              >{deletingId ? 'Menghapus...' : 'Ya, Hapus'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
