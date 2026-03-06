@@ -31,7 +31,7 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const pegawaiId = searchParams.get('pegawai_id')
-    const tanggal = searchParams.get('tanggal')
+    const tanggal = searchParams.get('tanggal') // format YYYY-MM-DD
     const bulan = searchParams.get('bulan')
     const tahun = searchParams.get('tahun')
 
@@ -40,22 +40,37 @@ export async function GET(request) {
 
     let query = {}
     if (pegawaiId) query.pegawai_id = pegawaiId
+
+    // Ketika filter by tanggal (dashboard hari ini)
     if (tanggal) {
-      const start = new Date(tanggal)
-      start.setHours(0, 0, 0, 0)
-      const end = new Date(tanggal)
-      end.setHours(23, 59, 59, 999)
-      query.waktu_masuk = { $gte: start, $lte: end }
+      // Kita buat range dari UTC midnight ke UTC end of day sesuai tanggal tersebut
+      // Karena new Date('YYYY-MM-DD') defaultnya UTC
+      const start = new Date(`${tanggal}T00:00:00.000Z`)
+      const end = new Date(`${tanggal}T23:59:59.999Z`)
+
+      // Bisa jadi datanya disimpan di field createdAt atau waktu_masuk
+      query.$or = [
+        { waktu_masuk: { $gte: start, $lte: end } },
+        { createdAt: { $gte: start, $lte: end } }
+      ]
     } else if (bulan && tahun) {
-      const start = new Date(parseInt(tahun), parseInt(bulan) - 1, 1)
-      const end = new Date(parseInt(tahun), parseInt(bulan), 0, 23, 59, 59)
-      query.waktu_masuk = { $gte: start, $lte: end }
+      const yearNum = parseInt(tahun)
+      const monthNum = parseInt(bulan)
+
+      const start = new Date(Date.UTC(yearNum, monthNum - 1, 1, 0, 0, 0))
+      const end = new Date(Date.UTC(yearNum, monthNum, 0, 23, 59, 59, 999))
+
+      query.$or = [
+        { waktu_masuk: { $gte: start, $lte: end } },
+        { createdAt: { $gte: start, $lte: end } }
+      ]
     }
 
     const absensi = await db.collection('absensi').find(query).sort({ waktu_masuk: -1 }).toArray()
     const formatted = absensi.map(a => ({ ...a, id: a._id.toString() }))
     return NextResponse.json(formatted)
   } catch (error) {
+    console.error("Error GET absensi:", error)
     return NextResponse.json({ error: 'Gagal memuat absensi' }, { status: 500 })
   }
 }
