@@ -59,29 +59,35 @@ export default function DashboardPage() {
   const fetchAbsensiDashboard = async () => {
     setLoadingAbsensi(true)
     try {
-      const now = new Date()
-      const hariIni = namaHari[now.getDay()]
-      const tanggalIni = now.toISOString().split('T')[0]
-
-      // Fetch jadwal hari ini (filter berdasarkan nama hari)
-      // serta absensi hari ini secara paralel
-      const [jadwalRes, absensiRes] = await Promise.all([
+      // Fetch pegawai, jadwal hari ini, absensi hari ini secara paralel
+      const [pegawaiRes, jadwalRes, absensiRes] = await Promise.all([
+        fetch('/api/pegawai'),
         fetch(`/api/jadwal?hari=${hariIni}`),
         fetch(`/api/absensi?tanggal=${tanggalIni}`)
       ])
-      const [jadwalList, absensiList] = await Promise.all([
+
+      const [DataPegawaiRaw, jadwalList, absensiList] = await Promise.all([
+        pegawaiRes.json(),
         jadwalRes.json(),
         absensiRes.json()
       ])
 
-      // Filter jadwal yang tanggalnya = hari ini ATAU tidak punya tanggal spesifik (jadwal rutin mingguan)
-      // Jika jadwal punya field tanggal, harus cocok. Jika tidak ada tanggal, cukup cocok harinya.
+      // Normalisasi response getMongoConnection
+      const pegawaiRaw = DataPegawaiRaw.success && DataPegawaiRaw.data ? DataPegawaiRaw.data : DataPegawaiRaw;
+      const pegawaiFinal = Array.isArray(pegawaiRaw) ? pegawaiRaw : []
+
+      // Filter jadwal yang tanggalnya = hari ini ATAU tidak punya tanggal spesifik
       const jadwalValid = Array.isArray(jadwalList)
         ? jadwalList.filter(j => !j.tanggal || j.tanggal === tanggalIni || j.tanggal === '')
         : []
 
+      // Simpan di state context referensi semua pegawai, agar bisa di-map dengan absensi & jadwal.
+      // Modifikasi state jadwalHariIni dihapus penggunaannya sebagai trigger tunggal, diganti dengan list pegawai final 
       setJadwalHariIni(jadwalValid)
       setAbsensiData(Array.isArray(absensiList) ? absensiList : [])
+
+      // Simpan custom window property agar list pekerja tersedia untuk mapping
+      window.__pegawaiList = pegawaiFinal;
     } catch (error) {
       console.error('Error fetching absensi dashboard:', error)
     } finally {
@@ -297,17 +303,37 @@ export default function DashboardPage() {
 
       {/* Absensi Hari Ini — hanya untuk Admin & Owner */}
       {isAdminOrOwner && (() => {
-        // Deduplikasi: satu pengajar bisa punya beberapa kelas di hari yang sama
-        const pengajarUnik = []
+        // Gabungkan antara pegawai yang PUNYA JADWAL hari ini dan yang SUDAH ABSEN hari ini
+        const pegawaiHariIni = []
         const seen = new Set()
+
+        // 1. Masukkan yang punya jadwal
         jadwalHariIni.forEach(j => {
           if (!seen.has(j.pengajar_id)) {
             seen.add(j.pengajar_id)
-            pengajarUnik.push(j)
+            pegawaiHariIni.push({
+              id: j.pengajar_id,
+              nama: j.pengajar_nama
+            })
           }
         })
-        const jumlahHadir = pengajarUnik.filter(j => absensiData.some(a => a.pegawai_id === j.pengajar_id)).length
-        const jumlahBelum = pengajarUnik.length - jumlahHadir
+
+        // 2. Masukkan yang absen hari ini tapi mungkin tidak punya jadwal
+        absensiData.forEach(a => {
+          if (!seen.has(a.pegawai_id)) {
+            seen.add(a.pegawai_id)
+            pegawaiHariIni.push({
+              id: a.pegawai_id,
+              nama: a.pegawai_nama || 'Pegawai'
+            })
+          }
+        })
+
+        // Opsional: urutkan berdasarkan nama
+        pegawaiHariIni.sort((a, b) => a.nama.localeCompare(b.nama))
+
+        const jumlahHadir = pegawaiHariIni.filter(p => absensiData.some(a => a.pegawai_id === p.id)).length
+        const jumlahBelum = pegawaiHariIni.length - jumlahHadir
 
         return (
           <Card className="border-0 shadow-md">
@@ -345,19 +371,19 @@ export default function DashboardPage() {
                     </div>
                   ))}
                 </div>
-              ) : pengajarUnik.length === 0 ? (
+              ) : pegawaiHariIni.length === 0 ? (
                 <div className="text-center py-6 text-gray-400">
                   <Calendar className="w-10 h-10 mx-auto mb-2 text-gray-300" />
-                  <p className="text-sm font-medium">Tidak ada jadwal hari ini</p>
-                  <p className="text-xs mt-1">Tambahkan jadwal di menu Jadwal untuk memantau absensi</p>
+                  <p className="text-sm font-medium">Belum ada data absensi atau jadwal hari ini</p>
+                  <p className="text-xs mt-1">Pegawai yang absen mandiri akan tampil di sini</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-gray-100">
-                        <th className="text-left py-2 px-3 text-gray-500 font-medium">Pengajar</th>
-                        <th className="text-left py-2 px-3 text-gray-500 font-medium">Jadwal</th>
+                        <th className="text-left py-2 px-3 text-gray-500 font-medium">Pegawai</th>
+                        <th className="text-left py-2 px-3 text-gray-500 font-medium">Jadwal Hari Ini</th>
                         <th className="text-center py-2 px-3 text-gray-500 font-medium">Jam Masuk</th>
                         <th className="text-center py-2 px-3 text-gray-500 font-medium">Jam Keluar</th>
                         <th className="text-center py-2 px-3 text-gray-500 font-medium">Jarak</th>
@@ -365,26 +391,30 @@ export default function DashboardPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {pengajarUnik.map((jadwal) => {
-                        const absen = absensiData.find(a => a.pegawai_id === jadwal.pengajar_id)
+                      {pegawaiHariIni.map((p) => {
+                        const absen = absensiData.find(a => a.pegawai_id === p.id)
                         const sudahMasuk = !!absen?.waktu_masuk
                         const sudahKeluar = !!absen?.waktu_keluar
-                        // Kumpulkan semua kelas pengajar ini hari ini
+
+                        // Cek kelas dari jadwal
                         const kelasList = jadwalHariIni
-                          .filter(j => j.pengajar_id === jadwal.pengajar_id)
+                          .filter(j => j.pengajar_id === p.id)
                           .map(j => `${j.kelas} (${j.waktu_mulai}–${j.waktu_selesai})`)
                           .join(', ')
+
                         return (
-                          <tr key={jadwal.pengajar_id} className="hover:bg-gray-50 transition-colors">
+                          <tr key={p.id} className="hover:bg-gray-50 transition-colors">
                             <td className="py-2.5 px-3">
                               <div className="flex items-center gap-2">
                                 <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs flex-shrink-0">
-                                  {jadwal.pengajar_nama?.charAt(0)}
+                                  {p.nama?.charAt(0) || '?'}
                                 </div>
-                                <span className="font-medium text-gray-900">{jadwal.pengajar_nama}</span>
+                                <span className="font-medium text-gray-900">{p.nama}</span>
                               </div>
                             </td>
-                            <td className="py-2.5 px-3 text-gray-500 text-xs">{kelasList}</td>
+                            <td className="py-2.5 px-3 text-gray-500 text-xs">
+                              {kelasList || <span className="italic text-gray-400">Tidak ada jadwal tercatat</span>}
+                            </td>
                             <td className="py-2.5 px-3 text-center">
                               {sudahMasuk ? (
                                 <span className="text-green-600 font-medium">
