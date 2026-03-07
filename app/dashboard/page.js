@@ -311,35 +311,36 @@ export default function DashboardPage() {
       {/* Absensi Hari Ini — hanya untuk Admin & Owner */}
       {isAdminOrOwner && (() => {
         // Gabungkan antara pegawai yang PUNYA JADWAL hari ini dan yang SUDAH ABSEN hari ini
-        const pegawaiHariIni = []
-        const seen = new Set()
+        const pegawaiMap = new Map()
 
         // 1. Masukkan yang punya jadwal
         jadwalHariIni.forEach(j => {
-          if (!seen.has(j.pengajar_id)) {
-            seen.add(j.pengajar_id)
-            pegawaiHariIni.push({
+          const nama = j.pengajar_nama || 'Pegawai'
+          if (!pegawaiMap.has(nama)) {
+            pegawaiMap.set(nama, {
               id: j.pengajar_id,
-              nama: j.pengajar_nama
+              nama: nama
             })
           }
         })
 
         // 2. Masukkan yang absen hari ini tapi mungkin tidak punya jadwal
         absensiData.forEach(a => {
-          if (!seen.has(a.pegawai_id)) {
-            seen.add(a.pegawai_id)
-            pegawaiHariIni.push({
+          const nama = a.pegawai_nama || 'Pegawai'
+          if (!pegawaiMap.has(nama)) {
+            pegawaiMap.set(nama, {
               id: a.pegawai_id,
-              nama: a.pegawai_nama || 'Pegawai'
+              nama: nama
             })
           }
         })
 
+        const pegawaiHariIni = Array.from(pegawaiMap.values())
+
         // Opsional: urutkan berdasarkan nama
         pegawaiHariIni.sort((a, b) => a.nama.localeCompare(b.nama))
 
-        const jumlahHadir = pegawaiHariIni.filter(p => absensiData.some(a => a.pegawai_id === p.id)).length
+        const jumlahHadir = pegawaiHariIni.filter(p => absensiData.some(a => (a.pegawai_nama || 'Pegawai') === p.nama)).length
         const jumlahBelum = pegawaiHariIni.length - jumlahHadir
 
         return (
@@ -399,13 +400,13 @@ export default function DashboardPage() {
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {pegawaiHariIni.map((p) => {
-                        const absen = absensiData.find(a => a.pegawai_id === p.id)
+                        const absen = absensiData.find(a => (a.pegawai_nama || 'Pegawai') === p.nama)
                         const sudahMasuk = !!absen?.waktu_masuk
                         const sudahKeluar = !!absen?.waktu_keluar
 
                         // Cek kelas dari jadwal
                         const kelasList = jadwalHariIni
-                          .filter(j => j.pengajar_id === p.id)
+                          .filter(j => (j.pengajar_nama || 'Pegawai') === p.nama)
                           .map(j => `${j.kelas} (${j.waktu_mulai}–${j.waktu_selesai})`)
                           .join(', ')
 
