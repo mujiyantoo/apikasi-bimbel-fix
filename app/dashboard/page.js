@@ -59,6 +59,13 @@ export default function DashboardPage() {
   const fetchAbsensiDashboard = async () => {
     setLoadingAbsensi(true)
     try {
+      const now = new Date()
+      const year = now.getFullYear()
+      const month = String(now.getMonth() + 1).padStart(2, '0')
+      const date = String(now.getDate()).padStart(2, '0')
+      const tanggalIni = `${year}-${month}-${date}`
+      const hariIni = namaHari[now.getDay()]
+
       // Fetch pegawai, jadwal hari ini, absensi hari ini secara paralel
       const [pegawaiRes, jadwalRes, absensiRes] = await Promise.all([
         fetch('/api/pegawai'),
