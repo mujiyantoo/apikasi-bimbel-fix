@@ -33,16 +33,17 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const pengajar_id = searchParams.get('pengajar_id')
-    const bulan = searchParams.get('bulan')
-    const tahun = searchParams.get('tahun')
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
 
     const client = await clientPromise
     const db = client.db(process.env.DB_NAME || 'bimbel_db')
 
     let query = {}
     if (pengajar_id) query.pengajar_id = pengajar_id
-    if (bulan) query.bulan = parseInt(bulan)
-    if (tahun) query.tahun = parseInt(tahun)
+    if (startDate && endDate) {
+      query.tanggal = { $gte: startDate, $lte: endDate }
+    }
 
     const kinerja = await db.collection('kinerja')
       .find(query)
@@ -61,7 +62,7 @@ export async function GET(request) {
             })
             pengajar_nama = pengajar?.nama || 'Tidak diketahui'
           }
-        } catch (e) {}
+        } catch (e) { }
         return {
           ...item,
           id: item._id.toString(),

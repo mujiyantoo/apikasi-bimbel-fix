@@ -38,8 +38,28 @@ export default function KinerjaSayaPage() {
   console.log('ROLE:', session?.user?.role)
   const [kinerja, setKinerja] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filterBulan, setFilterBulan] = useState(new Date().getMonth() + 1)
-  const [filterTahun, setFilterTahun] = useState(new Date().getFullYear())
+
+  // Default dates: Sunday to Saturday of the current week (or previous if today is Sunday/Monday)
+  const getInitialDates = () => {
+    const today = new Date()
+    const dayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+
+    const end = new Date(today)
+    end.setDate(today.getDate() + (6 - dayOfWeek)) // Next Saturday (or today if it's Saturday)
+
+    const start = new Date(end)
+    start.setDate(end.getDate() - 6) // Previous Sunday
+
+    // Format YYYY-MM-DD
+    return {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0]
+    }
+  }
+
+  const initialDates = getInitialDates()
+  const [startDate, setStartDate] = useState(initialDates.start)
+  const [endDate, setEndDate] = useState(initialDates.end)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(defaultForm)
   const [submitLoading, setSubmitLoading] = useState(false)
@@ -66,8 +86,8 @@ export default function KinerjaSayaPage() {
   }, [status])
 
   useEffect(() => {
-    if (session) fetchKinerja()
-  }, [session, filterBulan, filterTahun])
+    if (session && startDate && endDate) fetchKinerja()
+  }, [session, startDate, endDate])
 
   const fetchKinerja = async () => {
     setLoading(true)
@@ -86,8 +106,8 @@ export default function KinerjaSayaPage() {
       }
       const params = new URLSearchParams()
       params.set('pengajar_id', found.id)
-      params.set('bulan', filterBulan)
-      params.set('tahun', filterTahun)
+      params.set('startDate', startDate)
+      params.set('endDate', endDate)
       const res = await fetch('/api/kinerja?' + params)
       const data = await res.json()
       setKinerja(Array.isArray(data) ? data : [])
@@ -318,17 +338,12 @@ export default function KinerjaSayaPage() {
           <CardHeader>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Bulan</Label>
-                <Select value={filterBulan.toString()} onValueChange={(v) => setFilterBulan(parseInt(v))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {bulanOptions.map(b => <SelectItem key={b.value} value={b.value.toString()}>{b.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Label>Tanggal Mulai</Label>
+                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               </div>
               <div>
-                <Label>Tahun</Label>
-                <Input type="number" value={filterTahun} onChange={(e) => setFilterTahun(parseInt(e.target.value))} />
+                <Label>Tanggal Akhir</Label>
+                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
               </div>
             </div>
           </CardHeader>
@@ -355,7 +370,7 @@ export default function KinerjaSayaPage() {
 
             <div className="mb-4 p-4 bg-green-50 rounded-lg border border-green-200">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <span className="text-sm font-medium text-green-700">Total Gaji Bulan Ini</span>
+                <span className="text-sm font-medium text-green-700">Total Gaji Periode Ini</span>
                 <span className="text-xl font-bold text-green-600 flex items-center">
                   <DollarSign className="w-5 h-5 mr-1" />
                   {formatRupiah(totalGaji)}
