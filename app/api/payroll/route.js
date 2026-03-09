@@ -5,14 +5,22 @@ export const dynamic = 'force-dynamic'
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
-    const bulan = parseInt(searchParams.get('bulan'))
-    const tahun = parseInt(searchParams.get('tahun'))
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
 
     const client = await clientPromise
     const db = client.db(process.env.DB_NAME || 'bimbel_db')
 
+    const query = {}
+    if (startDate && endDate) {
+      query.tanggal = { $gte: startDate, $lte: endDate }
+    } else {
+      // Jika tidak ada parameter tanggal, kita asumsikan kosong dulu
+      return NextResponse.json([])
+    }
+
     const kinerjaData = await db.collection('kinerja')
-      .find({ bulan, tahun })
+      .find(query)
       .sort({ tanggal: 1 })
       .toArray()
 

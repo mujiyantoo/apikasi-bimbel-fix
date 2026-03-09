@@ -17,26 +17,40 @@ export default function PayrollPage() {
 
   const [payroll, setPayroll] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filterBulan, setFilterBulan] = useState(new Date().getMonth() + 1)
-  const [filterTahun, setFilterTahun] = useState(new Date().getFullYear())
+
+  // Default dates: Sunday to Saturday of the current week (or previous if today is Sunday/Monday)
+  // Let's set a simple logic: end=Saturday this week, start=Sunday this week
+  const getInitialDates = () => {
+    const today = new Date()
+    const dayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+
+    const end = new Date(today)
+    end.setDate(today.getDate() + (6 - dayOfWeek)) // Next Saturday (or today if it's Saturday)
+
+    const start = new Date(end)
+    start.setDate(end.getDate() - 6) // Previous Sunday
+
+    // Format YYYY-MM-DD
+    return {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0]
+    }
+  }
+
+  const initialDates = getInitialDates()
+  const [startDate, setStartDate] = useState(initialDates.start)
+  const [endDate, setEndDate] = useState(initialDates.end)
+
   const [expandedRows, setExpandedRows] = useState({})
   const [deletingId, setDeletingId] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null) // { id, nama, tanggal }
   const isOwner = session?.user?.role?.toLowerCase() === 'owner'
 
-  const bulanOptions = [
-    { value: 1, label: 'Januari' }, { value: 2, label: 'Februari' },
-    { value: 3, label: 'Maret' }, { value: 4, label: 'April' },
-    { value: 5, label: 'Mei' }, { value: 6, label: 'Juni' },
-    { value: 7, label: 'Juli' }, { value: 8, label: 'Agustus' },
-    { value: 9, label: 'September' }, { value: 10, label: 'Oktober' },
-    { value: 11, label: 'November' }, { value: 12, label: 'Desember' }
-  ]
 
   const fetchPayroll = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/payroll?bulan=' + filterBulan + '&tahun=' + filterTahun)
+      const res = await fetch(`/api/payroll?startDate=${startDate}&endDate=${endDate}`)
       const data = await res.json()
       setPayroll(Array.isArray(data) ? data : [])
     } catch (error) {
@@ -64,8 +78,10 @@ export default function PayrollPage() {
   }
 
   useEffect(() => {
-    fetchPayroll()
-  }, [filterBulan, filterTahun])
+    if (startDate && endDate) {
+      fetchPayroll()
+    }
+  }, [startDate, endDate])
 
   const toggleExpand = (pengajarId) => {
     setExpandedRows(prev => ({ ...prev, [pengajarId]: !prev[pengajarId] }))
@@ -84,7 +100,13 @@ export default function PayrollPage() {
   const totalKeseluruhan = payroll.reduce((sum, item) => sum + item.total_gaji, 0)
   const totalJamKeseluruhan = payroll.reduce((sum, item) => sum + item.total_jam, 0)
   const totalSesiKeseluruhan = payroll.reduce((sum, item) => sum + item.jumlah_sesi, 0)
-  const namaBulan = bulanOptions.find(b => b.value === filterBulan)?.label
+
+  // Helper for formatting date in UI
+  const formatDateLabel = (dateString) => {
+    if (!dateString) return ''
+    return new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+  }
+  const periodeLabel = `${formatDateLabel(startDate)} - ${formatDateLabel(endDate)}`
 
   // ================================================================
   // CETAK KWITANSI PER PENGAJAR — membuka popup print HTML modern
@@ -159,7 +181,7 @@ export default function PayrollPage() {
     <div class="header-info">
       <h1>Bimbingan Belajar Bina Insan Nusantara</h1>
       <p>Kwitansi Honorarium Pengajar</p>
-      <span class="badge">Periode: ${namaBulan} ${filterTahun}</span>
+      <span class="badge">Periode: ${periodeLabel}</span>
     </div>
   </div>
   <div class="body">
@@ -170,7 +192,7 @@ export default function PayrollPage() {
       </div>
       <div class="meta-box">
         <label>Periode</label>
-        <span>${namaBulan} ${filterTahun}</span>
+        <span>${periodeLabel}</span>
       </div>
       <div class="meta-box">
         <label>Jumlah Sesi</label>
@@ -252,14 +274,16 @@ export default function PayrollPage() {
     const ws = XLSX.utils.json_to_sheet(dataToExport)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Payroll')
-    XLSX.writeFile(wb, 'Payroll_' + namaBulan + '_' + filterTahun + '.xlsx')
+    const safeStartDate = startDate || 'start'
+    const safeEndDate = endDate || 'end'
+    XLSX.writeFile(wb, `Payroll_${safeStartDate}_to_${safeEndDate}.xlsx`)
   }
   const exportToPDF = () => {
     const doc = new jsPDF({ orientation: 'landscape' })
     doc.setFontSize(16)
     doc.text('LAPORAN PAYROLL PENGAJAR BIN BIMBEL CABANG PANUMBANGAN', 14, 15)
     doc.setFontSize(10)
-    doc.text('Periode: ' + namaBulan + ' ' + filterTahun, 14, 22)
+    doc.text('Periode: ' + periodeLabel, 14, 22)
 
     const tableData = []
     payroll.forEach(item => {
@@ -300,10 +324,10 @@ export default function PayrollPage() {
     <div className="p-4 md:p-6 space-y-4 md:space-y-6 pt-14 md:pt-6">
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-gray-900">Payroll Pengajar</h1>
-          <p className="text-xs md:text-sm text-gray-500">Daftar gaji — {namaBulan} {filterTahun}</p>
+          <p className="text-xs md:text-sm text-gray-500">Daftar gaji — {periodeLabel}</p>
         </div>
         <Button onClick={fetchPayroll} variant="outline" size="sm">
           <RefreshCw className="w-4 h-4 mr-1" /> Refresh
@@ -350,20 +374,25 @@ export default function PayrollPage() {
       {/* Tabel Payroll */}
       <Card>
         <CardHeader>
-          {/* Filter Bulan & Tahun */}
+          {/* Filter Tanggal */}
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
-              <Label className="text-xs mb-1 block">Bulan</Label>
-              <Select value={filterBulan.toString()} onValueChange={(v) => setFilterBulan(parseInt(v))}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {bulanOptions.map(b => <SelectItem key={b.value} value={b.value.toString()}>{b.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Label className="text-xs mb-1 block">Tanggal Mulai</Label>
+              <Input
+                className="h-9 text-sm"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
             </div>
             <div>
-              <Label className="text-xs mb-1 block">Tahun</Label>
-              <Input className="h-9 text-sm" type="number" value={filterTahun} onChange={(e) => setFilterTahun(parseInt(e.target.value))} />
+              <Label className="text-xs mb-1 block">Tanggal Akhir</Label>
+              <Input
+                className="h-9 text-sm"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
             </div>
           </div>
           {/* Tombol Export */}
