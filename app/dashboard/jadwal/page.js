@@ -111,16 +111,128 @@ export default function JadwalPage() {
   }
 
   const exportToPDF = () => {
-    const doc = new jsPDF()
-    doc.setFontSize(16)
-    doc.text('JADWAL KBM BINA INSAN NUSANTARA', 14, 15)
-    doc.autoTable({
-      startY: 25,
-      head: [['Hari', 'Tanggal', 'Kelas', 'Waktu', 'Mata Pelajaran', 'Pengajar', 'Ruangan']],
-      body: jadwal.map(item => [item.hari, new Date(item.tanggal).toLocaleDateString('id-ID'), item.kelas, `${item.waktu_mulai}-${item.waktu_selesai}`, item.mata_pelajaran, item.pengajar_nama, item.ruangan]),
-      headStyles: { fillColor: [99, 102, 241] }, styles: { fontSize: 7 }
-    })
-    doc.save(`Jadwal_${new Date().toISOString().split('T')[0]}.pdf`)
+    const now = new Date()
+    const tglCetak = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+    const jamCetak = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+
+    const rowsHTML = jadwal.map((item, i) => `
+      <tr>
+        <td style="text-align:center">${i + 1}</td>
+        <td>
+          <span class="badge" style="background:${hariColors[item.hari] || '#6b7280'};color:white;">${item.hari}</span>
+        </td>
+        <td style="color:#475569;font-weight:500;">${new Date(item.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+        <td><span class="kelas-badge">${item.kelas}</span></td>
+        <td style="color:#64748b;">${item.waktu_mulai} - ${item.waktu_selesai}</td>
+        <td style="font-weight:600;color:#1e293b;">${item.mata_pelajaran}</td>
+        <td style="color:#334155;">${item.pengajar_nama}</td>
+        <td style="color:#64748b;">${item.ruangan}</td>
+      </tr>
+    `).join('')
+
+    const html = `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Jadwal Bimbingan Belajar BIN</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; color: #334155; padding: 32px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .wrapper { max-width: 1000px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.06); overflow: hidden; }
+    .header { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; padding: 36px 40px; display: flex; align-items: center; justify-content: space-between; }
+    .header-left { display: flex; align-items: center; gap: 24px; }
+    .header-logo { width: 64px; height: 64px; background: white; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; color: #4f46e5; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .header-info h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 4px; }
+    .header-info p { font-size: 13px; opacity: 0.9; font-weight: 500; }
+    .header-right { text-align: right; }
+    .header-right .tag { display: inline-block; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; }
+    
+    .body { padding: 40px; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; }
+    thead tr { background: #f8fafc; }
+    thead th { padding: 14px 16px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; border-bottom: 2px solid #e2e8f0; }
+    tbody tr { transition: all 0.2s; }
+    tbody tr:nth-child(even) { background: #fbfcfd; }
+    tbody td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .kelas-badge { display: inline-block; background: #e0e7ff; color: #4338ca; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+    
+    .footer { padding: 32px 40px; border-top: 1px dashed #cbd5e1; display: flex; justify-content: space-between; align-items: flex-end; background: #fdfdfe; }
+    .footer-note p { font-size: 11px; color: #94a3b8; margin-top: 4px; font-weight: 500; }
+    .signature { text-align: center; }
+    .signature p { font-size: 12px; color: #64748b; font-weight: 500; }
+    .signature .name { font-weight: 700; color: #1e293b; font-size: 14px; border-top: 1px solid #cbd5e1; padding-top: 8px; margin-top: 60px; }
+    
+    @media print {
+      body { background: white; padding: 0; }
+      .wrapper { box-shadow: none; border-radius: 0; max-width: 100%; }
+      table { border-color: #cbd5e1; }
+      thead th { background: #f1f5f9 !important; border-bottom-color: #cbd5e1; }
+      tbody td { border-bottom-color: #e2e8f0; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <div class="header-left">
+      <div class="header-logo">BIN</div>
+      <div class="header-info">
+        <h1>Jadwal Mengajar</h1>
+        <p>Bimbingan Belajar Bina Insan Nusantara</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="tag">DOKUMEN JADWAL</span>
+    </div>
+  </div>
+  
+  <div class="body">
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:center; width: 40px;">No</th>
+          <th style="width: 90px;">Hari</th>
+          <th style="width: 110px;">Tanggal</th>
+          <th style="width: 80px;">Kelas</th>
+          <th style="width: 130px;">Waktu</th>
+          <th>Mata Pelajaran</th>
+          <th>Pengajar</th>
+          <th style="width: 120px;">Ruangan</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHTML}
+      </tbody>
+    </table>
+  </div>
+  
+  <div class="footer">
+    <div class="footer-note">
+      <p style="color:#64748b;font-weight:600;font-size:12px;">Bina Insan Nusantara</p>
+      <p>Dicetak pada: ${tglCetak} ${jamCetak} WIB</p>
+      <p>Dokumen ini digenerate secara otomatis oleh sistem.</p>
+    </div>
+    <div class="signature">
+      <p>Mengetahui,</p>
+      <p class="name">Manajemen Akademik</p>
+    </div>
+  </div>
+</div>
+<script>
+  window.onload = () => { 
+    setTimeout(() => { window.print(); }, 500);
+  }
+</script>
+</body>
+</html>`
+
+    const win = window.open('', '_blank', 'width=1100,height=800')
+    win.document.write(html)
+    win.document.close()
   }
 
   return (
