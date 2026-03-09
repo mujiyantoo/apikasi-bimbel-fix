@@ -60,6 +60,21 @@ export async function POST(request) {
     const client = await clientPromise
     const db = client.db('bimbel_db')
 
+    // Cek apakah jadwal yang persis sama sudah ada
+    const existing = await db.collection('jadwal').findOne({
+      tanggal: data.tanggal,
+      waktu_mulai: data.waktu_mulai,
+      waktu_selesai: data.waktu_selesai,
+      kelas: data.kelas,
+      mata_pelajaran: data.mata_pelajaran,
+      pengajar_id: data.pengajar_id,
+      ruangan: data.ruangan
+    })
+
+    if (existing) {
+      return NextResponse.json({ error: 'Jadwal yang sama persis sudah ada untuk pengajar ini' }, { status: 400 })
+    }
+
     // DIUBAH: simpan pengajar_id sebagai string UUID, bukan ObjectId
     const newJadwal = {
       ...data,
