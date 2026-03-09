@@ -39,16 +39,19 @@ export default function KinerjaSayaPage() {
   const [kinerja, setKinerja] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // Default dates: Sunday to Saturday of the current week (or previous if today is Sunday/Monday)
+  // Default dates: Monday to Saturday of the current week (or previous if today is Sunday)
   const getInitialDates = () => {
     const today = new Date()
     const dayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 
-    const end = new Date(today)
-    end.setDate(today.getDate() + (6 - dayOfWeek)) // Next Saturday (or today if it's Saturday)
+    // Start = Senin (Monday)
+    const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+    const start = new Date(today)
+    start.setDate(today.getDate() - diffToMonday)
 
-    const start = new Date(end)
-    start.setDate(end.getDate() - 6) // Previous Sunday
+    // End = Sabtu (Saturday)
+    const end = new Date(start)
+    end.setDate(start.getDate() + 5)
 
     // Format YYYY-MM-DD
     return {
@@ -384,7 +387,7 @@ export default function KinerjaSayaPage() {
                 <Loader2 className="w-6 h-6 animate-spin text-blue-600 mx-auto" />
               </div>
             ) : kinerja.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">Belum ada data kinerja bulan ini</div>
+              <div className="text-center py-8 text-gray-500">Belum ada data kinerja periode ini</div>
             ) : (
               <div className="overflow-x-auto -mx-4 px-4">
                 <table className="w-full text-sm min-w-[500px]">

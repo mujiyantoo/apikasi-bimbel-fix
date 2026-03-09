@@ -18,17 +18,19 @@ export default function PayrollPage() {
   const [payroll, setPayroll] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // Default dates: Sunday to Saturday of the current week (or previous if today is Sunday/Monday)
-  // Let's set a simple logic: end=Saturday this week, start=Sunday this week
+  // Default dates: Monday to Saturday of the current week (or previous if today is Sunday)
   const getInitialDates = () => {
     const today = new Date()
     const dayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 
-    const end = new Date(today)
-    end.setDate(today.getDate() + (6 - dayOfWeek)) // Next Saturday (or today if it's Saturday)
+    // Start = Senin (Monday)
+    const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+    const start = new Date(today)
+    start.setDate(today.getDate() - diffToMonday)
 
-    const start = new Date(end)
-    start.setDate(end.getDate() - 6) // Previous Sunday
+    // End = Sabtu (Saturday)
+    const end = new Date(start)
+    end.setDate(start.getDate() + 5)
 
     // Format YYYY-MM-DD
     return {
