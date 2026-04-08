@@ -133,10 +133,23 @@ export default function KinerjaSayaPage() {
     const h2 = parseInt(parts2[0]), m2 = parseInt(parts2[1])
     const menit = (h2 * 60 + m2) - (h1 * 60 + m1)
     if (menit <= 0) return 0
-    const tarifReguler = { 'SD': 24000, 'SMP': 25000, 'SMA': 25000 }
-    const tarifPR = { 'SD': 25000, 'SMP': 25000, 'SMA': 25000 }
+
+    // Cek apakah pengajar spesial (tarif SD 26.000)
+    const specialNames = ['sanny', 'maya', 'agung', 'didah', 'nissa', 'fadilla', 'euis']
+    const isSpecial = session?.user?.name && specialNames.some(name => 
+      session.user.name.toLowerCase().includes(name.toLowerCase())
+    )
+
+    const baseTarifSD = (jenjang === 'SD' && isSpecial) ? 26000 : 24000
+    const tarifReguler = { 'SD': baseTarifSD, 'SMP': 25000, 'SMA': 25000 }
+    
+    // PR: (menit / 90) * 0.75 * tarif
+    // Backend menggunakan tarif yang sama untuk SD PR (24k/26k)
+    const tarifPR = { 'SD': baseTarifSD, 'SMP': 25000, 'SMA': 25000 }
+
     if (kategori === 'Reguler') {
-      return (tarifReguler[jenjang] || 0) * Math.floor(menit / 60)
+      // Backend menggunakan flat per sesi untuk Reguler
+      return tarifReguler[jenjang] || 0
     } else {
       return Math.round((menit / 90) * 0.75 * (tarifPR[jenjang] || 0))
     }

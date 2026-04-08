@@ -12,11 +12,22 @@ const TARIF = {
 const TARIF_PR_SMA = 25000
 const TARIF_PIKET = 7000
 
-function hitungGaji(jenjang, kategori, menitMengajar) {
+function hitungGaji(jenjang, kategori, menitMengajar, namaPengajar = '') {
   // Piket: flat Rp 7.000 per sesi, tidak tergantung jenjang & durasi
   if (kategori === 'Piket') return TARIF_PIKET
 
-  const tarif = TARIF[jenjang]
+  let tarif = TARIF[jenjang]
+  
+  // Penyesuaian tarif SD khusus untuk pengajar tertentu
+  const specialNames = ['sanny', 'maya', 'agung', 'didah', 'nissa', 'fadilla', 'euis']
+  const isSpecial = namaPengajar && specialNames.some(name => 
+    namaPengajar.toLowerCase().includes(name.toLowerCase())
+  )
+
+  if (jenjang === 'SD' && isSpecial) {
+    tarif = 26000
+  }
+
   if (!tarif) return 0
 
   if (kategori === 'Reguler') {
@@ -94,14 +105,26 @@ export async function POST(request) {
       )
     }
 
-    const gaji = hitungGaji(jenjang, kategori, menitMengajar)
-
-    const tgl = new Date(tanggal)
-    const bulan = tgl.getMonth() + 1
-    const tahun = tgl.getFullYear()
-
     const client = await clientPromise
     const db = client.db(process.env.DB_NAME || 'bimbel_db')
+
+    // Ambil nama pengajar untuk perhitungan tarif khusus
+    let namaPengajar = ''
+    try {
+      const { ObjectId } = await import('mongodb')
+      if (pengajar_id && ObjectId.isValid(pengajar_id)) {
+        const pengajar = await db.collection('pegawai').findOne({
+          _id: new ObjectId(pengajar_id)
+        })
+        namaPengajar = pengajar?.nama || ''
+      }
+    } catch (e) {
+      console.error('Error fetching pengajar name for gaji calculation:', e)
+    }
+
+    const gaji = hitungGaji(jenjang, kategori, menitMengajar, namaPengajar)
+
+    const tgl = new Date(tanggal)
 
     const newKinerja = {
       pengajar_id,
