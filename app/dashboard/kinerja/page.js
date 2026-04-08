@@ -122,6 +122,12 @@ export default function KinerjaSayaPage() {
     }
   }
 
+  // Cek apakah pengajar spesial (tarif SD 26.000)
+  const specialNames = ['sanny', 'maya', 'agung', 'didah', 'nissa', 'fadilla', 'euis']
+  const isSpecial = session?.user?.name && specialNames.some(name => 
+    session.user.name.toLowerCase().includes(name.toLowerCase())
+  )
+
   const hitungGaji = (jenjang, kategori, jamMulai, jamSelesai) => {
     // Piket: flat Rp 7.000 per sesi
     if (kategori === 'Piket') return 7000
@@ -133,12 +139,6 @@ export default function KinerjaSayaPage() {
     const h2 = parseInt(parts2[0]), m2 = parseInt(parts2[1])
     const menit = (h2 * 60 + m2) - (h1 * 60 + m1)
     if (menit <= 0) return 0
-
-    // Cek apakah pengajar spesial (tarif SD 26.000)
-    const specialNames = ['sanny', 'maya', 'agung', 'didah', 'nissa', 'fadilla', 'euis']
-    const isSpecial = session?.user?.name && specialNames.some(name => 
-      session.user.name.toLowerCase().includes(name.toLowerCase())
-    )
 
     const baseTarifSD = (jenjang === 'SD' && isSpecial) ? 26000 : 24000
     const tarifReguler = { 'SD': baseTarifSD, 'SMP': 25000, 'SMA': 25000 }
@@ -154,7 +154,6 @@ export default function KinerjaSayaPage() {
       return Math.round((menit / 90) * 0.75 * (tarifPR[jenjang] || 0))
     }
   }
-
   const handleSubmit = async () => {
     const isPiket = form.kategori === 'Piket'
     if (!form.tanggal || !form.jam_mulai || !form.jam_selesai || !form.kategori) {
@@ -368,13 +367,13 @@ export default function KinerjaSayaPage() {
             <div className="mb-4 grid grid-cols-3 gap-3">
               <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
                 <p className="text-xs font-semibold text-blue-700 mb-1">Reguler (per sesi)</p>
-                <p className="text-xs text-gray-600">SD: Rp 24.000</p>
+                <p className="text-xs text-gray-600">SD: Rp {isSpecial ? '26.000' : '24.000'}</p>
                 <p className="text-xs text-gray-600">SMP: Rp 25.000</p>
                 <p className="text-xs text-gray-600">SMA: Rp 25.000</p>
               </div>
               <div className="bg-orange-50 rounded-lg p-3 border border-orange-100">
                 <p className="text-xs font-semibold text-orange-700 mb-1">PR (mnt/90×0,75×tarif)</p>
-                <p className="text-xs text-gray-600">SD: Rp 24.000</p>
+                <p className="text-xs text-gray-600">SD: Rp {isSpecial ? '26.000' : '24.000'}</p>
                 <p className="text-xs text-gray-600">SMP: Rp 25.000</p>
                 <p className="text-xs text-gray-600">SMA: Rp 25.000</p>
               </div>
