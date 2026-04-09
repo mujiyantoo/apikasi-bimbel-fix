@@ -35,7 +35,6 @@ const defaultForm = {
 export default function KinerjaSayaPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  console.log('ROLE:', session?.user?.role)
   const [kinerja, setKinerja] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -108,7 +107,7 @@ export default function KinerjaSayaPage() {
         return
       }
       const params = new URLSearchParams()
-      params.set('pengajar_id', found.id)
+      params.set('pengajar_id', found.id || found._id)
       params.set('startDate', startDate)
       params.set('endDate', endDate)
       const res = await fetch('/api/kinerja?' + params)
@@ -174,7 +173,7 @@ export default function KinerjaSayaPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          pengajar_id: pegawaiSaya.id, pengajar_nama: pegawaiSaya.nama,
+          pengajar_id: pegawaiSaya.id || pegawaiSaya._id, pengajar_nama: pegawaiSaya.nama,
           tanggal: form.tanggal, jam_mulai: form.jam_mulai, jam_selesai: form.jam_selesai,
           menit_mengajar: menit, jenjang: form.jenjang || '-', kategori: form.kategori,
           keterangan: form.keterangan, gaji

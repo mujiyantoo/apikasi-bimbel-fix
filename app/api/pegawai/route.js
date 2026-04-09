@@ -25,9 +25,14 @@ export async function GET(request) {
       .sort({ createdAt: -1 })
       .toArray();
 
+    const formattedPegawai = pegawai.map(p => ({
+      ...p,
+      id: p._id.toString()
+    }));
+
     return NextResponse.json({
       success: true,
-      data: pegawai
+      data: formattedPegawai
     });
   } catch (error) {
     console.error('❌ GET /api/pegawai Error:', error);

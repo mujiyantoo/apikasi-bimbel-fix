@@ -47,6 +47,9 @@ export async function GET(request) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
 
+    const bulan = searchParams.get('bulan')
+    const tahun = searchParams.get('tahun')
+
     const client = await clientPromise
     const db = client.db(process.env.DB_NAME || 'bimbel_db')
 
@@ -55,6 +58,8 @@ export async function GET(request) {
     if (startDate && endDate) {
       query.tanggal = { $gte: startDate, $lte: endDate }
     }
+    if (bulan) query.bulan = parseInt(bulan)
+    if (tahun) query.tahun = parseInt(tahun)
 
     const kinerja = await db.collection('kinerja')
       .find(query)
@@ -94,6 +99,14 @@ export async function POST(request) {
     const data = await request.json()
     const { pengajar_id, tanggal, jam_mulai, jam_selesai, jenjang, kategori, keterangan } = data
 
+    // Validasi field wajib
+    if (!tanggal || !jam_mulai || !jam_selesai || !kategori) {
+      return NextResponse.json(
+        { error: 'Field tanggal, jam_mulai, jam_selesai, dan kategori wajib diisi' },
+        { status: 400 }
+      )
+    }
+
     const [jamM, menitM] = jam_mulai.split(':').map(Number)
     const [jamS, menitS] = jam_selesai.split(':').map(Number)
     const menitMengajar = (jamS * 60 + menitS) - (jamM * 60 + menitM)
@@ -111,11 +124,28 @@ export async function POST(request) {
     // Ambil nama pengajar untuk perhitungan tarif khusus
     let namaPengajar = ''
     try {
-      const { ObjectId } = await import('mongodb')
-      if (pengajar_id && ObjectId.isValid(pengajar_id)) {
-        const pengajar = await db.collection('pegawai').findOne({
-          _id: new ObjectId(pengajar_id)
-        })
+      if (pengajar_id) {
+        // Coba cari pegawai berdasarkan _id (bisa ObjectId atau string/UUID)
+        const { ObjectId } = await import('mongodb')
+        let pengajar = null
+        
+        if (ObjectId.isValid(pengajar_id) && pengajar_id.length === 24) {
+          // Hanya gunakan ObjectId jika format benar (24 char hex)
+          pengajar = await db.collection('pegawai').findOne({
+            _id: new ObjectId(pengajar_id)
+          })
+        }
+        
+        // Jika tidak ketemu dengan ObjectId, coba cari sebagai string
+        if (!pengajar) {
+          pengajar = await db.collection('pegawai').findOne({
+            $or: [
+              { _id: pengajar_id },
+              { id: pengajar_id }
+            ]
+          })
+        }
+        
         namaPengajar = pengajar?.nama || ''
       }
     } catch (e) {
@@ -124,7 +154,9 @@ export async function POST(request) {
 
     const gaji = hitungGaji(jenjang, kategori, menitMengajar, namaPengajar)
 
-    const tgl = new Date(tanggal)
+    const [tahunStr, bulanStr] = tanggal.split('-')
+    const bulan = parseInt(bulanStr)
+    const tahun = parseInt(tahunStr)
 
     const newKinerja = {
       pengajar_id,
@@ -150,9 +182,13 @@ export async function POST(request) {
     )
   } catch (error) {
     console.error('Error creating kinerja:', error)
-    return NextResponse.json({ error: 'Gagal menambahkan kinerja' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Gagal menambahkan kinerja', detail: error.message, stack: error.stack },
+      { status: 500 }
+    )
   }
 }
+
 
 export async function DELETE(request) {
   try {
