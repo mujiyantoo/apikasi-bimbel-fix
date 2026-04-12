@@ -18,24 +18,15 @@ export default function PayrollPage() {
   const [payroll, setPayroll] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // Default dates: Monday to Saturday of the current week (or previous if today is Sunday)
+  // Default dates: 1st to last day of current month
   const getInitialDates = () => {
     const today = new Date()
-    const dayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-
-    // Start = Senin (Monday)
-    const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-    const start = new Date(today)
-    start.setDate(today.getDate() - diffToMonday)
-
-    // End = Sabtu (Saturday)
-    const end = new Date(start)
-    end.setDate(start.getDate() + 5)
-
-    // Format YYYY-MM-DD
+    const year = today.getFullYear()
+    const month = today.getMonth()
+    const fmt = (d) => d.toISOString().split('T')[0]
     return {
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0]
+      start: fmt(new Date(year, month, 1)),
+      end: fmt(new Date(year, month + 1, 0))
     }
   }
 
@@ -319,7 +310,7 @@ export default function PayrollPage() {
       footStyles: { fillColor: [34, 197, 94], fontStyle: 'bold' },
       styles: { fontSize: 8 }
     })
-    doc.save('Payroll_' + namaBulan + '_' + filterTahun + '.pdf')
+    doc.save('Payroll_' + startDate + '_' + endDate + '.pdf')
   }
 
   return (

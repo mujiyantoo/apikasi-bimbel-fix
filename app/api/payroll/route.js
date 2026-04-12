@@ -41,11 +41,15 @@ export async function GET(request) {
             // Coba cari sebagai ObjectId
             try {
               const { ObjectId: ObjId } = await import('mongodb')
-              pegawai = await db.collection('pegawai').findOne({ _id: new ObjId(pid) })
+              if (pid && pid.length === 24) {
+                pegawai = await db.collection('pegawai').findOne({ _id: new ObjId(pid) })
+              }
             } catch (e) { }
-            // Fallback: cari sebagai string field
+            // Fallback: cari sebagai string _id atau field id (untuk UUID lama)
             if (!pegawai) {
-              pegawai = await db.collection('pegawai').findOne({ id: pid })
+              pegawai = await db.collection('pegawai').findOne({
+                $or: [{ _id: pid }, { id: pid }]
+              })
             }
             pengajar_nama = pegawai?.nama || ''
           } catch (e) { }
