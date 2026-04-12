@@ -26,7 +26,6 @@ export default function JadwalPage() {
   const [jadwal, setJadwal] = useState([])
   const [pegawai, setPegawai] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filterHari, setFilterHari] = useState('all')
   const [filterTanggal, setFilterTanggal] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -46,7 +45,6 @@ export default function JadwalPage() {
     setLoading(true)
     try {
       const params = new URLSearchParams()
-      if (filterHari !== 'all') params.set('hari', filterHari)
       if (filterTanggal) params.set('tanggal', filterTanggal)
       const res = await fetch(`/api/jadwal?${params}`)
       const data = await res.json()
@@ -64,7 +62,7 @@ export default function JadwalPage() {
     } catch (e) { console.error(e) }
   }
 
-  useEffect(() => { fetchJadwal(); fetchPegawai() }, [filterHari, filterTanggal])
+  useEffect(() => { fetchJadwal(); fetchPegawai() }, [filterTanggal])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -342,18 +340,11 @@ export default function JadwalPage() {
 
         {/* Filter */}
         <div className="fc">
-          <div className="fg">
-            <label>Filter Hari</label>
-            <select className="fs" value={filterHari} onChange={(e) => setFilterHari(e.target.value)}>
-              <option value="all">Semua Hari</option>
-              {hariOptions.map(h => <option key={h} value={h}>{h}</option>)}
-            </select>
-          </div>
-          <div className="fg">
+          <div className="fg" style={{ flex: 1 }}>
             <label>Filter Tanggal</label>
             <input className="fi" type="date" value={filterTanggal} onChange={(e) => setFilterTanggal(e.target.value)} />
           </div>
-          <div className="eb">
+          <div className="eb text-right">
             <button className="be" onClick={exportToExcel}><FileDown size={12} /> Excel</button>
             <button className="be" onClick={exportToPDF}><FileDown size={12} /> PDF</button>
           </div>
