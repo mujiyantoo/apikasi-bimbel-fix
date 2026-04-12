@@ -38,24 +38,22 @@ export default function KinerjaSayaPage() {
   const [kinerja, setKinerja] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // Default dates: Monday to Saturday of the current week (or previous if today is Sunday)
+  // Default dates: 1st to last day of current month
   const getInitialDates = () => {
     const today = new Date()
-    const dayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const year = today.getFullYear()
+    const month = today.getMonth()
 
-    // Start = Senin (Monday)
-    const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-    const start = new Date(today)
-    start.setDate(today.getDate() - diffToMonday)
-
-    // End = Sabtu (Saturday)
-    const end = new Date(start)
-    end.setDate(start.getDate() + 5)
+    // Start = tanggal 1 bulan ini
+    const start = new Date(year, month, 1)
+    // End = tanggal terakhir bulan ini
+    const end = new Date(year, month + 1, 0)
 
     // Format YYYY-MM-DD
+    const fmt = (d) => d.toISOString().split('T')[0]
     return {
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0]
+      start: fmt(start),
+      end: fmt(end)
     }
   }
 
@@ -108,6 +106,7 @@ export default function KinerjaSayaPage() {
       }
       const params = new URLSearchParams()
       params.set('pengajar_id', found.id || found._id)
+      params.set('pengajar_nama', found.nama)
       params.set('startDate', startDate)
       params.set('endDate', endDate)
       const res = await fetch('/api/kinerja?' + params)

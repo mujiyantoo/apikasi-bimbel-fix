@@ -44,6 +44,7 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const pengajar_id = searchParams.get('pengajar_id')
+    const pengajar_nama = searchParams.get('pengajar_nama')
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
 
@@ -54,7 +55,31 @@ export async function GET(request) {
     const db = client.db(process.env.DB_NAME || 'bimbel_db')
 
     let query = {}
-    if (pengajar_id) query.pengajar_id = pengajar_id
+    if (pengajar_id || pengajar_nama) {
+      // Kumpulkan semua kemungkinan ID pengajar (termasuk UUID lama)
+      const idSet = new Set()
+      if (pengajar_id) idSet.add(pengajar_id)
+
+      // Cari semua pegawai yang namanya cocok (mungkin ada duplikat dengan ID berbeda)
+      if (pengajar_nama) {
+        const { ObjectId } = await import('mongodb')
+        const matchingPegawai = await db.collection('pegawai').find({
+          nama: { $regex: new RegExp('^' + pengajar_nama.trim() + '$', 'i') }
+        }).toArray()
+        matchingPegawai.forEach(p => {
+          idSet.add(p._id.toString())
+          if (p.id) idSet.add(p.id)
+          // Jika _id itu sendiri adalah string (UUID), tambahkan juga
+          if (typeof p._id === 'string') idSet.add(p._id)
+        })
+      }
+
+      const allIds = Array.from(idSet)
+      query.$or = [
+        { pengajar_id: { $in: allIds } },
+        ...(pengajar_nama ? [{ pengajar_nama: { $regex: new RegExp('^' + pengajar_nama.trim() + '$', 'i') } }] : [])
+      ]
+    }
     if (startDate && endDate) {
       query.tanggal = { $gte: startDate, $lte: endDate }
     }
