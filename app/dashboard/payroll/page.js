@@ -313,6 +313,84 @@ export default function PayrollPage() {
     doc.save('Payroll_' + startDate + '_' + endDate + '.pdf')
   }
 
+  const exportKwitansiPDF = (item, e) => {
+    e.stopPropagation()
+    const doc = new jsPDF({ orientation: 'portrait' })
+    const now = new Date()
+    const tglCetak = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+    const jamCetak = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+
+    // Header Kwitansi
+    doc.setFontSize(16)
+    doc.setTextColor(30, 58, 138)
+    doc.setFont(undefined, 'bold')
+    doc.text('BIN', 14, 20)
+    
+    doc.setFontSize(14)
+    doc.setTextColor(30, 41, 59)
+    doc.text('Bimbingan Belajar Bina Insan Nusantara', 28, 20)
+    
+    doc.setFontSize(10)
+    doc.setFont(undefined, 'normal')
+    doc.setTextColor(100, 116, 139)
+    doc.text('Kwitansi Honorarium Pengajar', 28, 26)
+
+    // Meta Info
+    doc.setFontSize(10)
+    doc.setTextColor(30, 41, 59)
+    doc.text(`Nama Pengajar  : ${item.pengajar_nama}`, 14, 40)
+    doc.text(`Periode        : ${periodeLabel}`, 14, 46)
+    doc.text(`Jumlah Sesi    : ${item.jumlah_sesi} sesi (${formatJam(item.total_jam)})`, 14, 52)
+    doc.setFont(undefined, 'bold')
+    doc.setTextColor(22, 163, 74)
+    doc.text(`Total Honorarium : ${formatRupiah(item.total_gaji)}`, 14, 58)
+
+    // Table Data
+    const tableData = []
+    item.rincian.forEach((r, index) => {
+      tableData.push([
+        index + 1,
+        new Date(r.tanggal).toLocaleDateString('id-ID'),
+        `${r.jam_mulai} - ${r.jam_selesai}`,
+        `${r.menit_mengajar} mnt`,
+        r.jenjang,
+        r.kategori,
+        r.keterangan || '-',
+        formatRupiah(r.gaji),
+      ])
+    })
+
+    doc.autoTable({
+      startY: 65,
+      head: [['No', 'Tanggal', 'Jam', 'Durasi', 'Jenjang', 'Kategori', 'Keterangan', 'Gaji']],
+      body: tableData,
+      foot: [['', '', '', '', '', '', 'Total Honorarium', formatRupiah(item.total_gaji)]],
+      theme: 'grid',
+      headStyles: { fillColor: [30, 58, 138], textColor: 255 },
+      footStyles: { fillColor: [240, 253, 244], textColor: [21, 128, 61], fontStyle: 'bold' },
+      styles: { fontSize: 8 },
+      columnStyles: {
+        0: { cellWidth: 10 },
+        7: { halign: 'right' }
+      }
+    })
+
+    // Footer
+    const finalY = doc.lastAutoTable.finalY || 65
+    doc.setFontSize(9)
+    doc.setTextColor(148, 163, 184)
+    doc.setFont(undefined, 'normal')
+    doc.text(`Dicetak: ${tglCetak} ${jamCetak} WIB`, 14, finalY + 15)
+    doc.text('Sistem Manajemen Bimbel BIN Nusantara', 14, finalY + 20)
+
+    doc.setTextColor(30, 41, 59)
+    doc.text('Hormat kami,', 150, finalY + 15)
+    doc.setFont(undefined, 'bold')
+    doc.text('Bag. Keuangan BIN Bimbel', 140, finalY + 35)
+
+    doc.save(`Kwitansi_${item.pengajar_nama.replace(/\s+/g, '_')}_${startDate}_${endDate}.pdf`)
+  }
+
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6 pt-14 md:pt-6">
 
@@ -449,15 +527,23 @@ export default function PayrollPage() {
                         </div>
                         <p className="font-semibold text-gray-900">{item.pengajar_nama}</p>
                       </div>
-                      {/* Tombol Cetak Kwitansi */}
-                      <div className="col-span-1 flex justify-center">
+                      {/* Tombol Cetak Kwitansi & PDF */}
+                      <div className="col-span-1 flex flex-col items-center justify-center gap-1">
                         <button
                           onClick={(e) => cetakKwitansi(item, e)}
-                          title="Cetak Kwitansi"
-                          className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-600 text-xs font-medium transition-all active:scale-95"
+                          title="Cetak Kwitansi (Print)"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-600 text-[10px] font-medium transition-all active:scale-95 w-full justify-center"
                         >
-                          <Printer className="w-3.5 h-3.5" />
-                          <span>Cetak</span>
+                          <Printer className="w-3 h-3" />
+                          <span>Print</span>
+                        </button>
+                        <button
+                          onClick={(e) => exportKwitansiPDF(item, e)}
+                          title="Export Kwitansi ke PDF"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 text-[10px] font-medium transition-all active:scale-95 w-full justify-center"
+                        >
+                          <FileDown className="w-3 h-3" />
+                          <span>PDF</span>
                         </button>
                       </div>
                       <div className="col-span-2 text-center text-sm text-gray-600">{item.jumlah_sesi} sesi</div>
