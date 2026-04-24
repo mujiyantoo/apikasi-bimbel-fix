@@ -65,6 +65,9 @@ export default function KeuanganPage() {
     bulan: bulanSekarang, tahun: tahunSekarang,
     jumlah: '', status: 'lunas', keterangan: ''
   })
+  
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
 
   const fetchPembayaran = async () => {
     setLoading(true)
@@ -243,11 +246,30 @@ export default function KeuanganPage() {
     } else if (activeTab === 'pengeluaran') {
       data = pembayaran.filter(p => p.jenis === 'Pengeluaran')
     }
-    return data.filter(p =>
-      p.namaSiswa?.toLowerCase().includes(search.toLowerCase()) ||
-      p.jenis?.toLowerCase().includes(search.toLowerCase())
-    )
-  }, [pembayaran, activeTab, search, siswaList])
+    return data.filter(p => {
+      const matchSearch = p.namaSiswa?.toLowerCase().includes(search.toLowerCase()) ||
+                          p.jenis?.toLowerCase().includes(search.toLowerCase());
+      
+      let matchDate = true;
+      if (p.createdAt) {
+        const pDate = new Date(p.createdAt);
+        pDate.setHours(0, 0, 0, 0);
+        
+        if (startDate) {
+          const sDate = new Date(startDate);
+          sDate.setHours(0, 0, 0, 0);
+          if (pDate < sDate) matchDate = false;
+        }
+        if (endDate) {
+          const eDate = new Date(endDate);
+          eDate.setHours(23, 59, 59, 999);
+          if (pDate > eDate) matchDate = false;
+        }
+      }
+
+      return matchSearch && matchDate;
+    })
+  }, [pembayaran, activeTab, search, siswaList, startDate, endDate])
 
   const stats = useMemo(() => {
     const siswaCutiIds = new Set(siswaList.filter(s => s.status === 'Cuti').map(s => s.id))
@@ -818,9 +840,28 @@ Bag. Keuangan BIN Bimbel`
                 </CardTitle>
                 <CardDescription>{filteredData.length} data ditemukan</CardDescription>
               </div>
-              <div className="relative w-full md:w-64">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input placeholder="Cari data..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
+              <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                <div className="flex items-center gap-2">
+                  <Input 
+                    type="date" 
+                    value={startDate} 
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full md:w-36 text-sm"
+                    title="Tanggal Mulai"
+                  />
+                  <span className="text-gray-400">-</span>
+                  <Input 
+                    type="date" 
+                    value={endDate} 
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full md:w-36 text-sm"
+                    title="Tanggal Akhir"
+                  />
+                </div>
+                <div className="relative w-full md:w-64">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input placeholder="Cari data..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
+                </div>
               </div>
             </div>
           </CardHeader>
