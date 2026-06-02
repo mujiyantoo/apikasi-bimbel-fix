@@ -166,7 +166,13 @@ export default function KeuanganPage() {
           .map(p => p.siswaId)
       )
 
-      const siswaBlumAdaSPP = siswaAktif.filter(s => !sudahAdaSPP.has(s.id))
+      const tagihanYearMonthGen = parseInt(tahunTagihan) * 12 + bulanOptions.indexOf(bulanTagihan)
+      const siswaBlumAdaSPP = siswaAktif.filter(s => {
+        if (sudahAdaSPP.has(s.id)) return false
+        if (!s.tanggalMasuk) return true
+        const masuk = new Date(s.tanggalMasuk)
+        return (masuk.getFullYear() * 12 + masuk.getMonth()) <= tagihanYearMonthGen
+      })
 
       if (siswaBlumAdaSPP.length > 0) {
         await Promise.all(
@@ -237,12 +243,20 @@ export default function KeuanganPage() {
       data = pembayaran.filter(p => p.jenis !== 'Pengeluaran' && p.status === 'lunas')
     } else if (activeTab === 'tagihan') {
       // ✅ Hanya tampilkan tagihan pending untuk bulan (n-1), exclude siswa Cuti
-      data = pembayaran.filter(p =>
-        p.status === 'pending' &&
-        p.bulan?.toLowerCase() === bulanTagihan.toLowerCase() &&
-        p.tahun === tahunTagihan &&
-        !siswaCutiIds.has(p.siswaId) // ❌ Hilangkan siswa Cuti
-      )
+      // ✅ Exclude siswa yang tanggalMasuk-nya setelah bulan tagihan
+      const tagihanYearMonthFilter = parseInt(tahunTagihan) * 12 + bulanOptions.indexOf(bulanTagihan)
+      data = pembayaran.filter(p => {
+        if (p.status !== 'pending') return false
+        if (p.bulan?.toLowerCase() !== bulanTagihan.toLowerCase()) return false
+        if (p.tahun !== tahunTagihan) return false
+        if (siswaCutiIds.has(p.siswaId)) return false
+        const s = siswaList.find(sw => sw.id === p.siswaId)
+        if (s?.tanggalMasuk) {
+          const masuk = new Date(s.tanggalMasuk)
+          if ((masuk.getFullYear() * 12 + masuk.getMonth()) > tagihanYearMonthFilter) return false
+        }
+        return true
+      })
     } else if (activeTab === 'pengeluaran') {
       data = pembayaran.filter(p => p.jenis === 'Pengeluaran')
     }
@@ -279,14 +293,21 @@ export default function KeuanganPage() {
     const expense = pembayaran
       .filter(p => p.jenis === 'Pengeluaran')
       .reduce((acc, curr) => acc + (curr.jumlah || 0), 0)
-    // ✅ Pending hanya untuk bulan (n-1) dan bukan siswa Cuti
+    // ✅ Pending hanya untuk bulan (n-1), bukan siswa Cuti, dan tanggalMasuk ≤ bulan tagihan
+    const tagihanYearMonthStats = parseInt(tahunTagihan) * 12 + bulanOptions.indexOf(bulanTagihan)
     const pending = pembayaran
-      .filter(p =>
-        p.status === 'pending' &&
-        p.bulan?.toLowerCase() === bulanTagihan.toLowerCase() &&
-        p.tahun === tahunTagihan &&
-        !siswaCutiIds.has(p.siswaId) // ❌ Exclude siswa Cuti
-      )
+      .filter(p => {
+        if (p.status !== 'pending') return false
+        if (p.bulan?.toLowerCase() !== bulanTagihan.toLowerCase()) return false
+        if (p.tahun !== tahunTagihan) return false
+        if (siswaCutiIds.has(p.siswaId)) return false
+        const s = siswaList.find(sw => sw.id === p.siswaId)
+        if (s?.tanggalMasuk) {
+          const masuk = new Date(s.tanggalMasuk)
+          if ((masuk.getFullYear() * 12 + masuk.getMonth()) > tagihanYearMonthStats) return false
+        }
+        return true
+      })
       .reduce((acc, curr) => acc + (curr.jumlah || 0), 0)
     return { income, expense, pending, net: income - expense }
   }, [pembayaran, siswaList])
@@ -765,11 +786,17 @@ Bag. Keuangan BIN Bimbel`
               {formatCurrency(stats.pending)}
               <span className="ml-2 text-emerald-600 font-semibold">
                 ({pembayaran.filter(p => {
-                  const isCuti = siswaList.some(s => s.id === p.siswaId && s.status === 'Cuti')
-                  return p.status === 'pending' &&
-                    p.bulan?.toLowerCase() === bulanTagihan.toLowerCase() &&
-                    p.tahun === tahunTagihan &&
-                    !isCuti
+                  if (p.status !== 'pending') return false
+                  if (p.bulan?.toLowerCase() !== bulanTagihan.toLowerCase()) return false
+                  if (p.tahun !== tahunTagihan) return false
+                  if (siswaList.some(s => s.id === p.siswaId && s.status === 'Cuti')) return false
+                  const s = siswaList.find(sw => sw.id === p.siswaId)
+                  if (s?.tanggalMasuk) {
+                    const masuk = new Date(s.tanggalMasuk)
+                    const tym = parseInt(tahunTagihan) * 12 + bulanOptions.indexOf(bulanTagihan)
+                    if ((masuk.getFullYear() * 12 + masuk.getMonth()) > tym) return false
+                  }
+                  return true
                 }).length} siswa)
               </span>
             </CardDescription>
