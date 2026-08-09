@@ -121,7 +121,8 @@ export default function KinerjaSayaPage() {
   }
 
   // Cek apakah pengajar spesial (tarif SD 26.000)
-  const specialNames = ['sanny', 'maya', 'agung', 'didah', 'nissa', 'fadilla', 'euis']
+  // 'fadila' & 'fadilla' adalah guru yg sama (salah tulis), keduanya tarif SD spesial 26.000
+  const specialNames = ['sanny', 'maya', 'agung', 'didah', 'nissa', 'fadila', 'fadilla', 'euis']
   const isSpecial = session?.user?.name && specialNames.some(name => 
     session.user.name.toLowerCase().includes(name.toLowerCase())
   )
