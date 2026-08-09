@@ -14,25 +14,39 @@ export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders })
 }
 
-// Generate NIS unik: NIS-YYYY-XXX (XXX = counter tahun berjalan)
+// Generate NIS yang melanjutkan urutan NIS yang SUDAH ADA di collection 'siswa'.
+// Contoh: jika NIS terbesar adalah '070' -> menghasilkan '071'.
+// Mendukung prefix (mis. 'BIN-070' -> 'BIN-071') dan meniru jumlah digit yang dipakai.
 async function generateNIS(db) {
-  const year = new Date().getFullYear()
-  const prefix = `NIS-${year}-`
-  const last = await db.collection('siswa')
-    .find({ nis: { $regex: `^${prefix}` } })
-    .sort({ nis: -1 })
-    .limit(1)
+  const semua = await db.collection('siswa')
+    .find({}, { projection: { nis: 1 } })
     .toArray()
-  let counter = 1
-  if (last.length > 0) {
-    const match = last[0].nis.match(/(\d+)$/)
-    if (match) counter = parseInt(match[1], 10) + 1
+
+  let maxNum = 0
+  let prefix = ''
+  let digitLen = 3 // default panjang digit (001, 002, ... 070, 071)
+
+  for (const s of semua) {
+    const nis = s.nis
+    if (!nis || typeof nis !== 'string') continue
+    const m = nis.match(/^(.*?)(\d+)$/) // pisahkan prefix (boleh kosong) & angka di akhir
+    if (!m) continue
+    const curPrefix = m[1]
+    const curNum = parseInt(m[2], 10)
+    if (curNum > maxNum) {
+      maxNum = curNum
+      prefix = curPrefix
+      digitLen = m[2].length // tiru jumlah digit NIS terbesar
+    }
   }
-  const nis = `${prefix}${String(counter).padStart(3, '0')}`
-  // Pastikan benar-benar unik (jaga-jaga kalau ada gap)
+
+  const nextNum = maxNum + 1
+  const nis = `${prefix}${String(nextNum).padStart(digitLen, '0')}`
+
+  // Jaga-jaga kalau kebetulan sudah ada (collision sangat kecil)
   const existing = await db.collection('siswa').findOne({ nis })
   if (existing) {
-    return generateNIS(db) // recursive retry dengan counter berikutnya
+    return `${prefix}${String(nextNum + 1).padStart(digitLen, '0')}`
   }
   return nis
 }
