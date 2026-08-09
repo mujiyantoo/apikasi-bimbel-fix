@@ -19,7 +19,8 @@ function hitungGaji(jenjang, kategori, menitMengajar, namaPengajar = '') {
   let tarif = TARIF[jenjang]
   
   // Penyesuaian tarif SD khusus untuk pengajar tertentu
-  const specialNames = ['sanny', 'maya', 'agung', 'didah', 'nissa', 'fadilla', 'euis']
+  // 'fadila' & 'fadilla' adalah guru yg sama (salah tulis), keduanya perlu tarif spesial
+  const specialNames = ['sanny', 'maya', 'agung', 'didah', 'nissa', 'fadila', 'fadilla', 'euis']
   const isSpecial = namaPengajar && specialNames.some(name => 
     namaPengajar.toLowerCase().includes(name.toLowerCase())
   )
