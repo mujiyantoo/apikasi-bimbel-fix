@@ -125,6 +125,11 @@ export default function LoginPage() {
               UI/UX designed by{' '}
               <span style={{ color: '#2d7d6f' }} className="font-medium">Mujiyanto</span>
             </p>
+            <p className="mt-2 text-xs">
+              <a href="/privacy" className="underline" style={{ color: '#2d7d6f' }}>
+                Kebijakan Privasi
+              </a>
+            </p>
           </div>
         </CardContent>
       </Card>
