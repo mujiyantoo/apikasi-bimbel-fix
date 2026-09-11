@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.binbimbel.app",
+      "sha256_cert_fingerprints": [
+        "AA:1E:3D:62:FD:92:66:2F:30:5E:9B:75:E9:9F:3F:82:FA:91:B8:79:53:77:AF:A5:90:B9:27:83:5C:9A:0D:E6"
+      ]
+    }
+  }
+]
