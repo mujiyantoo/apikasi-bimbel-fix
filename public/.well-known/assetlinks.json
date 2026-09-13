@@ -1,11 +1,16 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "com.binbimbel.app",
       "sha256_cert_fingerprints": [
-        "AA:1E:3D:62:FD:92:66:2F:30:5E:9B:75:E9:9F:3F:82:FA:91:B8:79:53:77:AF:A5:90:B9:27:83:5C:9A:0D:E6"
+        "4D:59:FA:92:F2:E0:11:87:C5:CF:C3:03:40:2C:3D:F5:C5:A5:0E:74:DE:9C:CA:49:DA:69:48:4E:1C:4D:7F:BB",
+        "46:8E:0F:02:37:7B:5E:31:A6:5D:08:46:93:81:09:7E:CC:DE:C1:1C:40:13:A6:4F:21:AC:15:E2:FC:19:64:13",
+        "CC:C8:2B:D0:86:99:5B:88:76:79:BA:52:35:E5:39:2A:EC:0F:A9:F9:A3:BD:E6:C1:FA:45:90:C0:4F:DB:B1:B8",
+        "A0:ED:7D:E5:8D:8A:25:22:AE:9D:F3:C5:F7:90:9D:64:A4:C6:7B:B7:37:6F:72:A4:7E:2E:0E:6C:06:50:37:63"
       ]
     }
   }
