@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
+import { getApiSession, isAdmin } from '@/lib/apiAuth'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +16,9 @@ export async function OPTIONS() {
 
 export async function GET(request) {
   try {
+    const session = await getApiSession()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
     const status = searchParams.get('status')
@@ -83,6 +87,9 @@ export async function POST(request) {
 
 export async function PUT(request) {
   try {
+    const session = await getApiSession()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     const { id, status } = await request.json()
     const { ObjectId } = await import('mongodb')
     const client = await clientPromise
@@ -100,6 +107,9 @@ export async function PUT(request) {
 
 export async function DELETE(request) {
   try {
+    const session = await getApiSession()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
     if (!id) return NextResponse.json({ error: 'ID tidak ditemukan' }, { status: 400, headers: corsHeaders })

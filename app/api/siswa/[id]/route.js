@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
+import { getApiSession, isAdmin } from '@/lib/apiAuth'
 
 export async function GET(request, { params }) {
     try {
+        const session = await getApiSession()
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         const { id } = params
 
         if (!ObjectId.isValid(id)) {
@@ -42,6 +46,9 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
     try {
+        const session = await getApiSession()
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         const { id } = params
         const data = await request.json()
 
@@ -93,6 +100,9 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(request, { params }) {
     try {
+        const session = await getApiSession()
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         const { id } = params
 
         if (!ObjectId.isValid(id)) {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
+import { getApiSession, isAdmin } from '@/lib/apiAuth'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,6 +54,9 @@ async function generateNIS(db) {
 
 export async function POST(request) {
   try {
+    const session = await getApiSession()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     const { id } = await request.json()
     if (!id) {
       return NextResponse.json({ error: 'ID pendaftaran wajib diisi' }, { status: 400, headers: corsHeaders })

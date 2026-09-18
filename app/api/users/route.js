@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
+import { getApiSession } from '@/lib/apiAuth'
 import { MongoClient } from 'mongodb'
 
 const uri = process.env.MONGODB_URI
 const dbName = 'bimbel_db'
 
 export async function GET() {
-  const session = await getServerSession()
+  const session = await getApiSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const role = session.user?.role?.toLowerCase()

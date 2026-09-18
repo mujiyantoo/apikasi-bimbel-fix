@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getMongoConnection } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
+import { getApiSession, isAdmin } from '@/lib/apiAuth'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +25,9 @@ function buildQuery(id) {
 // ============================================
 export async function GET(request) {
     try {
+        const session = await getApiSession()
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         const connection = await getMongoConnection()
         if (!connection) {
             return NextResponse.json([], { status: 503 })
@@ -70,6 +74,9 @@ export async function GET(request) {
 // ============================================
 export async function POST(request) {
     try {
+        const session = await getApiSession()
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         const body = await request.json()
         const connection = await getMongoConnection()
         if (!connection) {
@@ -111,6 +118,9 @@ export async function POST(request) {
 // ============================================
 export async function PUT(request) {
     try {
+        const session = await getApiSession()
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         const { searchParams } = new URL(request.url)
         const id = searchParams.get('id')
 
@@ -156,6 +166,9 @@ export async function PUT(request) {
 // ============================================
 export async function DELETE(request) {
     try {
+        const session = await getApiSession()
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         const { searchParams } = new URL(request.url)
         const action = searchParams.get('action')
         const id = searchParams.get('id')

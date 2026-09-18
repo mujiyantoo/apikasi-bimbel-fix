@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
+import { getApiSession, isAdmin, isStaff } from '@/lib/apiAuth'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,6 +30,8 @@ function hitungJarak(lat1, lng1, lat2, lng2) {
 
 export async function GET(request) {
   try {
+    const session = await getApiSession()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { searchParams } = new URL(request.url)
     const pegawaiId = searchParams.get('pegawai_id')
     const tanggal = searchParams.get('tanggal') // format YYYY-MM-DD
@@ -39,7 +42,12 @@ export async function GET(request) {
     const db = client.db(process.env.DB_NAME)
 
     let query = {}
-    if (pegawaiId) query.pegawai_id = pegawaiId
+    if (isStaff(session) && !isAdmin(session)) {
+      // Pegawai/Guru hanya boleh melihat absensi dirinya sendiri
+      query.pegawai_id = session.user.id
+    } else if (pegawaiId) {
+      query.pegawai_id = pegawaiId
+    }
 
     // Ketika filter by tanggal (dashboard hari ini)
     if (tanggal) {
@@ -77,8 +85,12 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const session = await getApiSession()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const data = await request.json()
-    const { pegawai_id, pegawai_nama, lat, lng, tipe } = data
+    const { lat, lng, tipe } = data
+    const pegawai_id = session.user.id
+    const pegawai_nama = session.user.name
 
     const client = await clientPromise
     const db = client.db(process.env.DB_NAME)

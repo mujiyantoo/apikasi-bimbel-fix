@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
+import { getApiSession, isAdmin } from '@/lib/apiAuth'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request) {
   try {
+    const session = await getApiSession()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     const { searchParams } = new URL(request.url)
     const hari = searchParams.get('hari')
     const tanggal = searchParams.get('tanggal')
@@ -56,6 +60,9 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const session = await getApiSession()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     const data = await request.json()
     const client = await clientPromise
     const db = client.db('bimbel_db')
@@ -96,6 +103,9 @@ export async function POST(request) {
 
 export async function PUT(request) {
   try {
+    const session = await getApiSession()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     const data = await request.json()
     const { id, ...updateData } = data
     const client = await clientPromise
@@ -116,6 +126,9 @@ export async function PUT(request) {
 
 export async function DELETE(request) {
   try {
+    const session = await getApiSession()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
     const client = await clientPromise

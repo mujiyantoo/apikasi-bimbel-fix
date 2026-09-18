@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
+import { getApiSession, isAdmin } from '@/lib/apiAuth'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request) {
     try {
+        const session = await getApiSession()
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         const client = await clientPromise
         const db = client.db('bimbel_db')
         const collection = db.collection('jadwal')

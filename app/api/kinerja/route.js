@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
+import { getApiSession, isAdmin, isStaff } from '@/lib/apiAuth'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,6 +44,8 @@ function hitungGaji(jenjang, kategori, menitMengajar, namaPengajar = '') {
 
 export async function GET(request) {
   try {
+    const session = await getApiSession()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { searchParams } = new URL(request.url)
     const pengajar_id = searchParams.get('pengajar_id')
     const pengajar_nama = searchParams.get('pengajar_nama')
@@ -87,6 +90,25 @@ export async function GET(request) {
     if (bulan) query.bulan = parseInt(bulan)
     if (tahun) query.tahun = parseInt(tahun)
 
+    if (isStaff(session) && !isAdmin(session)) {
+      // Pegawai/Guru hanya boleh melihat kinerja miliknya sendiri
+      const { ObjectId } = await import('mongodb')
+      const myIds = new Set([session.user.id])
+      const myName = (session.user.name || '').trim()
+      const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const myPegawai = await db.collection('pegawai').find({
+        $or: [
+          { id: session.user.id },
+          ...(myName ? [{ nama: { $regex: '^' + esc(myName) + '$', $options: 'i' } }] : [])
+        ]
+      }).toArray()
+      myPegawai.forEach(p => { myIds.add(String(p._id)); if (p.id) myIds.add(p.id) })
+      query.$or = [
+        { pengajar_id: { $in: Array.from(myIds) } },
+        ...(myName ? [{ pengajar_nama: { $regex: '^' + esc(myName) + '$', $options: 'i' } }] : [])
+      ]
+    }
+
     const kinerja = await db.collection('kinerja')
       .find(query)
       .sort({ tanggal: -1 })
@@ -122,6 +144,9 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const session = await getApiSession()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     const data = await request.json()
     const { pengajar_id, tanggal, jam_mulai, jam_selesai, jenjang, kategori, keterangan } = data
 
@@ -218,6 +243,9 @@ export async function POST(request) {
 
 export async function DELETE(request) {
   try {
+    const session = await getApiSession()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 

@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getMongoConnection } from '@/lib/mongodb';
+import { getApiSession, isAdmin } from '@/lib/apiAuth';
 
 // GET /api/pegawai - Get all pegawai
 export async function GET(request) {
   try {
+    const session = await getApiSession()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     const connection = await getMongoConnection();
 
     if (!connection) {
@@ -51,6 +55,9 @@ export async function GET(request) {
 // POST /api/pegawai - Create new pegawai
 export async function POST(request) {
   try {
+    const session = await getApiSession()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     const body = await request.json();
     const connection = await getMongoConnection();
 

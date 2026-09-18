@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
 import { v4 as uuidv4 } from 'uuid'
+import { getApiSession, isAdmin } from '@/lib/apiAuth'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request) {
   try {
+    const session = await getApiSession()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
     const kelas = searchParams.get('kelas')
@@ -77,6 +81,9 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const session = await getApiSession()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     const data = await request.json()
     const { nama, nis, kelas, mataPelajaran, jenisKelamin, telepon, alamat, tanggalMasuk, status } = data
 

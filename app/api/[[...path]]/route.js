@@ -2,6 +2,7 @@ import { MongoClient } from 'mongodb'
 import { v4 as uuidv4 } from 'uuid'
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+import { getApiSession, isAdmin } from '@/lib/apiAuth'
 
 // MongoDB connection
 let client
@@ -30,23 +31,6 @@ export async function OPTIONS() {
   return handleCORS(new NextResponse(null, { status: 200 }))
 }
 
-// Initialize default admin user
-async function initializeAdmin(db) {
-  const existingAdmin = await db.collection('users').findOne({ email: 'admin@bimbel.com' })
-  if (!existingAdmin) {
-    const hashedPassword = await bcrypt.hash('admin123', 10)
-    await db.collection('users').insertOne({
-      id: uuidv4(),
-      email: 'admin@bimbel.com',
-      password: hashedPassword,
-      name: 'Administrator',
-      role: 'Admin',
-      createdAt: new Date()
-    })
-    console.log('Default admin user created')
-  }
-}
-
 // Route handler function
 async function handleRoute(request, { params }) {
   const { path = [] } = params
@@ -54,10 +38,12 @@ async function handleRoute(request, { params }) {
   const method = request.method
 
   try {
-    const db = await connectToMongo()
+    // Autentikasi: hanya owner/admin yang boleh memakai legacy API ini
+    const session = await getApiSession()
+    if (!session) return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    if (!isAdmin(session)) return handleCORS(NextResponse.json({ error: 'Forbidden' }, { status: 403 }))
 
-    // Initialize admin on first request
-    await initializeAdmin(db)
+    const db = await connectToMongo()
 
     // Root endpoint
     if ((route === '/root' || route === '/') && method === 'GET') {
