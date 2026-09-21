@@ -92,11 +92,9 @@ export default function KinerjaSayaPage() {
   const fetchKinerja = async () => {
     setLoading(true)
     try {
-      const resPegawai = await fetch('/api/pegawai')
+      const resPegawai = await fetch('/api/pegawai/me')
       const dataPegawai = await resPegawai.json()
-      const pegawaiList = dataPegawai.success && dataPegawai.data ? dataPegawai.data : dataPegawai
-      const list = Array.isArray(pegawaiList) ? pegawaiList : []
-      const found = list.find(p => p.nama?.trim().toLowerCase() === session?.user?.name?.trim().toLowerCase())
+      const found = dataPegawai.success && dataPegawai.data ? dataPegawai.data : null
       setPegawaiSaya(found || null)
       if (!found) {
         setPesan({ type: 'error', text: 'Data pegawai tidak ditemukan. Pastikan nama akun login sama dengan nama di data pegawai.' })

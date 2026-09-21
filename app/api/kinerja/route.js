@@ -146,7 +146,7 @@ export async function POST(request) {
   try {
     const session = await getApiSession()
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    if (!isAdmin(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!isAdmin(session) && !isStaff(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     const data = await request.json()
     const { pengajar_id, tanggal, jam_mulai, jam_selesai, jenjang, kategori, keterangan } = data
 
@@ -172,18 +172,36 @@ export async function POST(request) {
     const client = await clientPromise
     const db = client.db(process.env.DB_NAME || 'bimbel_db')
 
+    // Pegawai/Guru hanya boleh menginput kinerja miliknya sendiri
+    let pengajarIdFinal = pengajar_id
+    if (isStaff(session) && !isAdmin(session)) {
+      const { ObjectId } = await import('mongodb')
+      const myName = (session.user.name || '').trim()
+      const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const myPegawai = await db.collection('pegawai').findOne({
+        $or: [
+          { id: session.user.id },
+          ...(myName ? [{ nama: { $regex: '^' + esc(myName) + '$', $options: 'i' } }] : [])
+        ]
+      })
+      if (!myPegawai) {
+        return NextResponse.json({ error: 'Data pegawai tidak ditemukan' }, { status: 404 })
+      }
+      pengajarIdFinal = String(myPegawai._id)
+    }
+
     // Ambil nama pengajar untuk perhitungan tarif khusus
     let namaPengajar = ''
     try {
-      if (pengajar_id) {
+      if (pengajarIdFinal) {
         // Coba cari pegawai berdasarkan _id (bisa ObjectId atau string/UUID)
         const { ObjectId } = await import('mongodb')
         let pengajar = null
         
-        if (ObjectId.isValid(pengajar_id) && pengajar_id.length === 24) {
+        if (ObjectId.isValid(pengajarIdFinal) && pengajarIdFinal.length === 24) {
           // Hanya gunakan ObjectId jika format benar (24 char hex)
           pengajar = await db.collection('pegawai').findOne({
-            _id: new ObjectId(pengajar_id)
+            _id: new ObjectId(pengajarIdFinal)
           })
         }
         
@@ -191,8 +209,8 @@ export async function POST(request) {
         if (!pengajar) {
           pengajar = await db.collection('pegawai').findOne({
             $or: [
-              { _id: pengajar_id },
-              { id: pengajar_id }
+              { _id: pengajarIdFinal },
+              { id: pengajarIdFinal }
             ]
           })
         }
@@ -210,7 +228,7 @@ export async function POST(request) {
     const tahun = parseInt(tahunStr)
 
     const newKinerja = {
-      pengajar_id,
+      pengajar_id: pengajarIdFinal,
       tanggal,
       jam_mulai,
       jam_selesai,
