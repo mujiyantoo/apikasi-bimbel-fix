@@ -793,7 +793,11 @@ Bag. Keuangan BIN Bimbel`
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Tanggal</TableHead>
+                      {/* Kolom ini = tanggal tagihan DIBUAT, bukan tanggal periode.
+                          Diberi nama "Tanggal Terbit" agar tidak bingung. */}
+                      <TableHead title={activeTab === 'tagihan' ? 'Tanggal tagihan ini diterbitkan sistem' : undefined}>
+                        {activeTab === 'tagihan' ? 'Tanggal Terbit' : 'Tanggal'}
+                      </TableHead>
                       <TableHead>{activeTab === 'pengeluaran' ? 'Keterangan' : 'Nama Siswa'}</TableHead>
                       {activeTab !== 'pengeluaran' && <TableHead>Kelas</TableHead>}
                       <TableHead>Jenis</TableHead>
