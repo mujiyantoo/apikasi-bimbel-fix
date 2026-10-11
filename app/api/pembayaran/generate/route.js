@@ -79,22 +79,36 @@ export async function POST(request) {
       if (s.id) siswaById.set(String(s.id), s)
     }
 
-    const periodeNum = { bulan: periode.bulan, tahun: periode.tahun }
-
-    const pendingPeriode = await col
-      .find({ jenis: 'SPP', status: 'pending', bulan: bulanRegex(periode.bulan), tahun: tahunQuery(periode) })
+    // ---------------------------------------------------------------------
+    // Semua tagihan SPP periode n-1 — PENDING MAUPUN LUNAS.
+    //
+    // PENTING: tagihan yang sudah LUNAS harus dianggap "sudah ada".
+    // Kalau hanya melihat status pending, siswa yang SUDAH MEMBAYAR akan
+    // ditagih ulang (bug: muncul tagihan baru untuk periode yang sama).
+    // ---------------------------------------------------------------------
+    const tagihanPeriode = await col
+      .find({ jenis: 'SPP', bulan: bulanRegex(periode.bulan), tahun: tahunQuery(periode) })
       .sort({ createdAt: 1 })
       .toArray()
 
+    const adaLunas = new Set(
+      tagihanPeriode.filter((p) => p.status === 'lunas').map((p) => String(p.siswaId))
+    )
+
     // ---------------------------------------------------------------------
-    // 3. Tandai yang tidak layak + duplikat
+    // 3. Rapikan: buang yang tidak layak, duplikat, & pending setelah lunas
     // ---------------------------------------------------------------------
     const hapusIds = []
-    const siswaSudahPunya = new Set()
+    const siswaPunyaPending = new Set()
+    const siswaSudahPunya = new Set(adaLunas) // lunas = sudah punya tagihan
     const dilewati = []
+    let duplikatSetelahLunas = 0
 
-    for (const p of pendingPeriode) {
-      const siswa = siswaById.get(String(p.siswaId))
+    for (const p of tagihanPeriode) {
+      if (p.status !== 'pending') continue
+
+      const kunci = String(p.siswaId)
+      const siswa = siswaById.get(kunci)
 
       if (!siswa) {
         hapusIds.push(p._id)
@@ -107,11 +121,20 @@ export async function POST(request) {
         continue
       }
 
-      const kunci = String(p.siswaId)
-      if (siswaSudahPunya.has(kunci)) {
-        hapusIds.push(p._id) // duplikat → simpan yang paling lama
+      // Sudah lunas untuk periode ini → pending-nya jelas duplikat
+      if (adaLunas.has(kunci)) {
+        hapusIds.push(p._id)
+        duplikatSetelahLunas++
         continue
       }
+
+      // Duplikat pending → simpan yang paling lama
+      if (siswaPunyaPending.has(kunci)) {
+        hapusIds.push(p._id)
+        continue
+      }
+
+      siswaPunyaPending.add(kunci)
       siswaSudahPunya.add(kunci)
     }
 
@@ -124,9 +147,6 @@ export async function POST(request) {
     // ---------------------------------------------------------------------
     const dokumenBaru = []
     if (periode.hariIni > 1) {
-      const no = String(periode.tahun) + String(BULAN_INDEX(periode.bulan) + 1).padStart(2, '0')
-      let urut = 0
-
       for (const s of semuaSiswa) {
         const sid = s._id.toString()
         if (siswaSudahPunya.has(sid)) continue
@@ -155,7 +175,6 @@ export async function POST(request) {
           createdAt: now,
           updatedAt: now
         })
-        urut++
       }
     }
 
@@ -202,7 +221,8 @@ export async function POST(request) {
       tanggalHariIni: periode.hariIni,
       dihapus: {
         bulanBerjalan: jumlahBulanIni,
-        tidakLayakAtauDuplikat: hapusIds.length
+        tidakLayakAtauDuplikat: hapusIds.length,
+        duplikatSetelahLunas
       },
       dibuat: dokumenBaru.length,
       totalTagihanPendingPeriodeIni: totalPendingPeriode,
@@ -213,11 +233,4 @@ export async function POST(request) {
     console.error('POST /api/pembayaran/generate Error:', error)
     return NextResponse.json({ error: 'Gagal membuat tagihan', detail: error.message }, { status: 500 })
   }
-}
-
-function BULAN_INDEX(bulan) {
-  return [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-  ].indexOf(bulan)
 }
