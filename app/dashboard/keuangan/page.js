@@ -18,32 +18,28 @@ import {
   ShieldCheck, Sparkles, User, Calendar, Banknote, X
 } from 'lucide-react'
 
-const SPP_TARIF = { SD: 200000, SMP: 250000, SMA: 250000 }
+import {
+  BULAN as bulanOptions,
+  SPP_TARIF,
+  getSPPTarif,
+  getPeriode,
+  cekKelayakan,
+  isSamePeriode
+} from '@/lib/billing'
 
-const getSPPTarif = (kelas = '') => {
-  const k = kelas.toUpperCase()
-  if (k.includes('SMA') || k.match(/^(10|11|12|X|XI|XII)\b/)) return SPP_TARIF.SMA
-  if (k.includes('SMP') || k.match(/^(7|8|9|VII|VIII|IX)\b/)) return SPP_TARIF.SMP
-  if (k.includes('SD') || k.match(/^[1-6]\b/)) return SPP_TARIF.SD
-  return SPP_TARIF.SD
-}
-
-const bulanOptions = [
-  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-]
 const tahunOptions = ['2023', '2024', '2025', '2026']
 
-// === LOGIKA n-1: Tagihan terbit setelah tanggal 1, untuk bulan SEBELUMNYA ===
-const _now = new Date()
-const _bulanLaluDate = new Date(_now.getFullYear(), _now.getMonth() - 1, 1)
-const bulanTagihan = bulanOptions[_bulanLaluDate.getMonth()]
-const tahunTagihan = _bulanLaluDate.getFullYear().toString()
-const tanggalSekarang = _now.getDate() // hari ke berapa bulan ini
+// === LOGIKA n-1 (terpusat di lib/billing.js) ===
+// Tagihan terbit setelah tanggal 1, untuk bulan SEBELUMNYA.
+// Perhitungan memakai zona waktu WIB (Asia/Jakarta), bukan jam server/browser.
+const periodeTagihan = getPeriode(new Date(), -1) // contoh: September 2026
+const periodeBulanIni = getPeriode(new Date(), 0) // contoh: Oktober 2026
+const bulanTagihan = periodeTagihan.bulan
+const tahunTagihan = periodeTagihan.tahun
 
 // Untuk default form (tetap pakai bulan berjalan agar fleksibel input manual)
-const bulanSekarang = bulanOptions[_now.getMonth()]
-const tahunSekarang = _now.getFullYear().toString()
+const bulanSekarang = periodeBulanIni.bulan
+const tahunSekarang = periodeBulanIni.tahun
 
 export default function KeuanganPage() {
   const [activeTab, setActiveTab] = useState('tagihan')
@@ -100,105 +96,37 @@ export default function KeuanganPage() {
   }
 
   // =============================================
-  // AUTO-GENERATE PENDING SPP BULANAN (SISTEM n-1)
-  // ✅ Tagihan = bulan SEBELUMNYA (bukan bulan ini)
-  // ✅ Hanya berjalan setelah tanggal 1 setiap bulan
-  // ✅ Skip siswa Cuti
-  // ✅ Hapus pending SPP siswa yang sedang Cuti
+  // GENERATE / RAPIKAN TAGIHAN SPP — DIPINDAH KE SERVER
   // =============================================
-  const generateSPPBulanan = async (siswaData, pembayaranData) => {
+  // Sebelumnya pembuatan tagihan dijalankan di browser sehingga:
+  //   - database bisa ditulis setiap kali halaman dibuka,
+  //   - rawan duplikat bila dibuka di beberapa tab/perangkat,
+  //   - filter status & tanggal siswa belum dinormalisasi.
+  // Kini seluruh proses ditangani /api/pembayaran/generate (idempoten),
+  // dengan aturan terpusat di lib/billing.js.
+  const generateTagihan = async ({ silent = false } = {}) => {
     setGenerating(true)
     try {
-      // Pisahkan siswa aktif dan cuti
-      const siswaAktif = siswaData.filter(s => (s.status || 'Aktif') === 'Aktif')
-      const siswaCutiIds = new Set(
-        siswaData.filter(s => s.status === 'Cuti').map(s => s.id)
-      )
+      const res = await fetch('/api/pembayaran/generate', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Gagal menyiapkan tagihan')
 
-      // ✅ Hapus pending SPP bulan lalu untuk siswa yang Cuti (SELALU DIJALANKAN)
-      const pendingHarusDihapus = pembayaranData.filter(p =>
-        p.status === 'pending' &&
-        p.jenis === 'SPP' &&
-        p.bulan?.toLowerCase() === bulanTagihan.toLowerCase() &&
-        p.tahun === tahunTagihan &&
-        siswaCutiIds.has(p.siswaId)
-      )
-
-      if (pendingHarusDihapus.length > 0) {
-        await Promise.all(
-          pendingHarusDihapus.map(p =>
-            fetch(`/api/pembayaran?id=${p.id}`, { method: 'DELETE' })
-          )
-        )
-        toast.info(`${pendingHarusDihapus.length} tagihan SPP siswa Cuti dihapus otomatis`)
-      }
-
-      // ✅ Hapus pending SPP bulan berjalan (n) jika ada, karena aturan baru adalah n-1 (SELALU DIJALANKAN)
-      // Contoh: Jika sekarang Maret, maka tagihan Maret belum boleh ada (terbit April nanti)
-      const tagihanSalahBulan = pembayaranData.filter(p =>
-        p.status === 'pending' &&
-        p.jenis === 'SPP' &&
-        p.bulan?.toLowerCase() === bulanSekarang.toLowerCase() &&
-        p.tahun === tahunSekarang
-      )
-
-      if (tagihanSalahBulan.length > 0) {
-        await Promise.all(
-          tagihanSalahBulan.map(p =>
-            fetch(`/api/pembayaran?id=${p.id}`, { method: 'DELETE' })
-          )
-        )
-        toast.info(`${tagihanSalahBulan.length} tagihan bulan berjalan dihapus (menyesuaikan aturan n-1)`)
-      }
-
-      // ✅ Pembuatan tagihan n-1 HANYA berjalan jika sudah melewati tanggal 1 (artinya mulai tgl 2)
-      if (tanggalSekarang <= 1) {
-        if (pendingHarusDihapus.length > 0 || tagihanSalahBulan.length > 0) {
-          await fetchPembayaran()
+      if (!silent) {
+        if (data.dihapus?.bulanBerjalan > 0) {
+          toast.info(`${data.dihapus.bulanBerjalan} tagihan bulan berjalan dihapus (aturan n-1)`)
         }
-        return // Stop untuk generate tagihan baru
+        if (data.dihapus?.tidakLayakAtauDuplikat > 0) {
+          toast.info(`${data.dihapus.tidakLayakAtauDuplikat} tagihan tidak layak/duplikat dirapikan`)
+        }
+        if (data.dibuat > 0) {
+          toast.info(`${data.dibuat} tagihan SPP ${data.periode} dibuat otomatis`)
+        }
       }
-
-      // ✅ Buat pending hanya untuk siswa Aktif yang belum punya SPP bulan lalu (n-1)
-      const sudahAdaSPP = new Set(
-        pembayaranData
-          .filter(p => p.jenis === 'SPP' && p.bulan?.toLowerCase() === bulanTagihan.toLowerCase() && p.tahun === tahunTagihan)
-          .map(p => p.siswaId)
-      )
-
-      const tagihanYearMonthGen = parseInt(tahunTagihan) * 12 + bulanOptions.indexOf(bulanTagihan)
-      const siswaBlumAdaSPP = siswaAktif.filter(s => {
-        if (sudahAdaSPP.has(s.id)) return false
-        if (!s.tanggalMasuk) return true
-        const masuk = new Date(s.tanggalMasuk)
-        return (masuk.getFullYear() * 12 + masuk.getMonth()) <= tagihanYearMonthGen
-      })
-
-      if (siswaBlumAdaSPP.length > 0) {
-        await Promise.all(
-          siswaBlumAdaSPP.map(siswa =>
-            fetch('/api/pembayaran', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                siswaId: siswa.id,
-                namaSiswa: siswa.nama,
-                jenis: 'SPP',
-                bulan: bulanTagihan,
-                tahun: tahunTagihan,
-                jumlah: getSPPTarif(siswa.kelas),
-                status: 'pending',
-                keterangan: `SPP ${bulanTagihan} ${tahunTagihan} - ${siswa.kelas}`
-              })
-            })
-          )
-        )
-        toast.info(`${siswaBlumAdaSPP.length} tagihan SPP ${bulanTagihan} ${tahunTagihan} dibuat otomatis`)
-      }
-
-      await fetchPembayaran()
+      return data
     } catch (err) {
-      console.error('Generate SPP error:', err)
+      console.error('generateTagihan error:', err)
+      if (!silent) toast.error(err.message)
+      return null
     } finally {
       setGenerating(false)
     }
@@ -206,57 +134,41 @@ export default function KeuanganPage() {
 
   useEffect(() => {
     const init = async () => {
-      // ✅ LANGKAH 1: Hapus tagihan SPP pending bulan berjalan (n) dari server terlebih dahulu
-      // Ini memastikan tidak ada tagihan bulan ini yang muncul di daftar pending
-      try {
-        const cleanupRes = await fetch('/api/pembayaran?action=cleanup', { method: 'DELETE' })
-        const cleanupData = await cleanupRes.json()
-        if (cleanupData.deletedCount > 0) {
-          toast.info(`${cleanupData.deletedCount} tagihan ${cleanupData.bulan} (bulan ini) telah dihapus otomatis`)
-        }
-      } catch (e) {
-        console.error('Cleanup error:', e)
+      // Server yang merapikan + membuat tagihan (aman dipanggil berkali-kali)
+      const hasil = await generateTagihan({ silent: true })
+      // Transparansi: siswa yang TIDAK ditagih beserta alasannya
+      if (hasil?.siswaDilewati?.length > 0) {
+        console.warn('[tagihan] siswa tidak ditagih:', hasil.siswaDilewati)
       }
-
-      // ✅ LANGKAH 2: Ambil data siswa dan pembayaran (sudah bersih)
-      const [siswaData, pembayaranRes] = await Promise.all([
-        fetchSiswa(),
-        fetch(`/api/pembayaran?_t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json()).catch(() => [])
-      ])
-      const pembayaranData = Array.isArray(pembayaranRes) ? pembayaranRes : []
-      setPembayaran(pembayaranData)
-      setLoading(false)
-
-      // ✅ LANGKAH 3: Generate tagihan bulan lalu (n-1) jika belum ada dan sudah lewat tgl 1
-      if (siswaData.length > 0) {
-        await generateSPPBulanan(siswaData, pembayaranData)
-      }
+      await Promise.all([fetchSiswa(), fetchPembayaran()])
     }
     init()
   }, [])
 
+  // ============================================================
+  // Tagihan pending yang SAH untuk periode n-1.
+  // Satu sumber kebenaran untuk kartu ringkasan, daftar tagihan, dan
+  // total "Tagihan Pending" — supaya angkanya selalu konsisten.
+  // Aturan dari lib/billing.js: periode cocok + status siswa aktif
+  // (tidak peka huruf besar/kecil) + tanggal masuk <= bulan tagihan.
+  // ============================================================
+  const tagihanPendingPeriode = useMemo(() => {
+    return pembayaran.filter((p) => {
+      if (p.status !== 'pending') return false
+      if (p.jenis === 'Pengeluaran') return false
+      if (!isSamePeriode(p, periodeTagihan)) return false
+      const s = siswaList.find((sw) => sw.id === p.siswaId)
+      if (!s) return false
+      return cekKelayakan(s, periodeTagihan.index).layak
+    })
+  }, [pembayaran, siswaList])
+
   const filteredData = useMemo(() => {
     let data = pembayaran
-    // Set ID siswa yang sedang Cuti untuk filter
-    const siswaCutiIds = new Set(siswaList.filter(s => s.status === 'Cuti').map(s => s.id))
     if (activeTab === 'spp') {
       data = pembayaran.filter(p => p.jenis !== 'Pengeluaran' && p.status === 'lunas')
     } else if (activeTab === 'tagihan') {
-      // ✅ Hanya tampilkan tagihan pending untuk bulan (n-1), exclude siswa Cuti
-      // ✅ Exclude siswa yang tanggalMasuk-nya setelah bulan tagihan
-      const tagihanYearMonthFilter = parseInt(tahunTagihan) * 12 + bulanOptions.indexOf(bulanTagihan)
-      data = pembayaran.filter(p => {
-        if (p.status !== 'pending') return false
-        if (p.bulan?.toLowerCase() !== bulanTagihan.toLowerCase()) return false
-        if (p.tahun !== tahunTagihan) return false
-        if (siswaCutiIds.has(p.siswaId)) return false
-        const s = siswaList.find(sw => sw.id === p.siswaId)
-        if (s?.tanggalMasuk) {
-          const masuk = new Date(s.tanggalMasuk)
-          if ((masuk.getFullYear() * 12 + masuk.getMonth()) > tagihanYearMonthFilter) return false
-        }
-        return true
-      })
+      data = tagihanPendingPeriode
     } else if (activeTab === 'pengeluaran') {
       data = pembayaran.filter(p => p.jenis === 'Pengeluaran')
     }
@@ -283,34 +195,19 @@ export default function KeuanganPage() {
 
       return matchSearch && matchDate;
     })
-  }, [pembayaran, activeTab, search, siswaList, startDate, endDate])
+  }, [pembayaran, activeTab, search, siswaList, startDate, endDate, tagihanPendingPeriode])
 
   const stats = useMemo(() => {
-    const siswaCutiIds = new Set(siswaList.filter(s => s.status === 'Cuti').map(s => s.id))
     const income = pembayaran
       .filter(p => p.jenis !== 'Pengeluaran' && p.status === 'lunas')
       .reduce((acc, curr) => acc + (curr.jumlah || 0), 0)
     const expense = pembayaran
       .filter(p => p.jenis === 'Pengeluaran')
       .reduce((acc, curr) => acc + (curr.jumlah || 0), 0)
-    // ✅ Pending hanya untuk bulan (n-1), bukan siswa Cuti, dan tanggalMasuk ≤ bulan tagihan
-    const tagihanYearMonthStats = parseInt(tahunTagihan) * 12 + bulanOptions.indexOf(bulanTagihan)
-    const pending = pembayaran
-      .filter(p => {
-        if (p.status !== 'pending') return false
-        if (p.bulan?.toLowerCase() !== bulanTagihan.toLowerCase()) return false
-        if (p.tahun !== tahunTagihan) return false
-        if (siswaCutiIds.has(p.siswaId)) return false
-        const s = siswaList.find(sw => sw.id === p.siswaId)
-        if (s?.tanggalMasuk) {
-          const masuk = new Date(s.tanggalMasuk)
-          if ((masuk.getFullYear() * 12 + masuk.getMonth()) > tagihanYearMonthStats) return false
-        }
-        return true
-      })
-      .reduce((acc, curr) => acc + (curr.jumlah || 0), 0)
+    // ✅ Pakai daftar yang sudah tervalidasi (satu sumber kebenaran)
+    const pending = tagihanPendingPeriode.reduce((acc, curr) => acc + (curr.jumlah || 0), 0)
     return { income, expense, pending, net: income - expense }
-  }, [pembayaran, siswaList])
+  }, [pembayaran, tagihanPendingPeriode])
 
   const handleOpenDialog = () => {
     setFormData({
@@ -785,19 +682,7 @@ Bag. Keuangan BIN Bimbel`
             <CardDescription>
               {formatCurrency(stats.pending)}
               <span className="ml-2 text-emerald-600 font-semibold">
-                ({pembayaran.filter(p => {
-                  if (p.status !== 'pending') return false
-                  if (p.bulan?.toLowerCase() !== bulanTagihan.toLowerCase()) return false
-                  if (p.tahun !== tahunTagihan) return false
-                  if (siswaList.some(s => s.id === p.siswaId && s.status === 'Cuti')) return false
-                  const s = siswaList.find(sw => sw.id === p.siswaId)
-                  if (s?.tanggalMasuk) {
-                    const masuk = new Date(s.tanggalMasuk)
-                    const tym = parseInt(tahunTagihan) * 12 + bulanOptions.indexOf(bulanTagihan)
-                    if ((masuk.getFullYear() * 12 + masuk.getMonth()) > tym) return false
-                  }
-                  return true
-                }).length} siswa)
+                ({tagihanPendingPeriode.length} siswa)
               </span>
             </CardDescription>
           </CardHeader>
