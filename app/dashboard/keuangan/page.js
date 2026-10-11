@@ -118,6 +118,9 @@ export default function KeuanganPage() {
         if (data.dihapus?.tidakLayakAtauDuplikat > 0) {
           toast.info(`${data.dihapus.tidakLayakAtauDuplikat} tagihan tidak layak/duplikat dirapikan`)
         }
+        if (data.dihapus?.duplikatSetelahLunas > 0) {
+          toast.warning(`${data.dihapus.duplikatSetelahLunas} tagihan ganda dihapus (siswa sudah lunas)`)
+        }
         if (data.dibuat > 0) {
           toast.info(`${data.dibuat} tagihan SPP ${data.periode} dibuat otomatis`)
         }
@@ -134,8 +137,9 @@ export default function KeuanganPage() {
 
   useEffect(() => {
     const init = async () => {
-      // Server yang merapikan + membuat tagihan (aman dipanggil berkali-kali)
-      const hasil = await generateTagihan({ silent: true })
+      // Server yang merapikan + membuat tagihan (aman dipanggil berkali-kali).
+      // Notifikasi hanya muncul kalau memang ada yang diubah, jadi tidak berisik.
+      const hasil = await generateTagihan()
       // Transparansi: siswa yang TIDAK ditagih beserta alasannya
       if (hasil?.siswaDilewati?.length > 0) {
         console.warn('[tagihan] siswa tidak ditagih:', hasil.siswaDilewati)
