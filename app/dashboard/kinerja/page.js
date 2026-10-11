@@ -97,7 +97,7 @@ export default function KinerjaSayaPage() {
       const found = dataPegawai.success && dataPegawai.data ? dataPegawai.data : null
       setPegawaiSaya(found || null)
       if (!found) {
-        setPesan({ type: 'error', text: 'Data pegawai tidak ditemukan. Pastikan nama akun login sama dengan nama di data pegawai.' })
+        setPesan({ type: 'error', text: 'Data pegawai untuk akun Anda belum ditemukan. Hubungi admin agar nama akun disamakan dengan data pegawai (atau akun ditautkan).' })
         setKinerja([])
         setLoading(false)
         return

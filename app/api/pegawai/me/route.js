@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getMongoConnection } from '@/lib/mongodb';
 import { getApiSession } from '@/lib/apiAuth';
+import { resolvePegawaiForSession } from '@/lib/pegawaiMatch';
 
 // GET /api/pegawai/me - Ambil data pegawai milik user yang sedang login
 // Boleh diakses semua role yang sudah login (tidak hanya admin).
@@ -22,16 +23,16 @@ export async function GET(request) {
     const { db } = connection;
 
     const myName = (session.user?.name || '').trim()
-    const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-    const pegawai = await db.collection('pegawai').findOne({
-      $or: [
-        { id: session.user?.id },
-        ...(myName ? [{ nama: { $regex: '^' + esc(myName) + '$', $options: 'i' } }] : [])
-      ]
-    });
+    // Pencocokan memakai helper terpusat: tautan user_id/email lebih dulu,
+    // lalu nama ternormalisasi (gelar & tanda baca diabaikan).
+    const pegawai = await resolvePegawaiForSession(db, session)
 
     if (!pegawai) {
+      console.warn(
+        `[pegawai/me] Tidak menemukan data pegawai untuk akun "${myName}" ` +
+        `(email: ${session.user?.email || '-'}, id: ${session.user?.id || '-'}).`
+      )
       return NextResponse.json({ success: true, data: null });
     }
 

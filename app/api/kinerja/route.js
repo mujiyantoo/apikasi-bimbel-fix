@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
 import { getApiSession, isAdmin, isStaff } from '@/lib/apiAuth'
+import { resolvePegawaiForSession } from '@/lib/pegawaiMatch'
 
 export const dynamic = 'force-dynamic'
 
@@ -91,21 +92,34 @@ export async function GET(request) {
     if (tahun) query.tahun = parseInt(tahun)
 
     if (isStaff(session) && !isAdmin(session)) {
-      // Pegawai/Guru hanya boleh melihat kinerja miliknya sendiri
-      const { ObjectId } = await import('mongodb')
-      const myIds = new Set([session.user.id])
-      const myName = (session.user.name || '').trim()
+      // Pegawai/Guru hanya boleh melihat kinerja miliknya sendiri.
+      // Pakai helper terpusat agar nama dengan gelar/tanda baca tetap cocok.
+      const myPegawai = await resolvePegawaiForSession(db, session)
+
       const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      const myPegawai = await db.collection('pegawai').find({
-        $or: [
-          { id: session.user.id },
-          ...(myName ? [{ nama: { $regex: '^' + esc(myName) + '$', $options: 'i' } }] : [])
-        ]
-      }).toArray()
-      myPegawai.forEach(p => { myIds.add(String(p._id)); if (p.id) myIds.add(p.id) })
+      const myIds = new Set()
+      const myNames = new Set()
+
+      if (session.user.id) myIds.add(session.user.id)
+      if (myPegawai) {
+        myIds.add(String(myPegawai._id))
+        if (myPegawai.id) myIds.add(myPegawai.id)
+        const namaPegawai = (myPegawai.nama || myPegawai.name || '').trim()
+        if (namaPegawai) myNames.add(namaPegawai)
+      }
+      // Data lama bisa tersimpan memakai nama akun, jadi ikut dicocokkan.
+      const akunNama = (session.user.name || '').trim()
+      if (akunNama) myNames.add(akunNama)
+
+      if (myIds.size === 0 && myNames.size === 0) {
+        return NextResponse.json([])
+      }
+
       query.$or = [
         { pengajar_id: { $in: Array.from(myIds) } },
-        ...(myName ? [{ pengajar_nama: { $regex: '^' + esc(myName) + '$', $options: 'i' } }] : [])
+        ...Array.from(myNames).map((n) => ({
+          pengajar_nama: { $regex: '^' + esc(n) + '$', $options: 'i' }
+        }))
       ]
     }
 
@@ -118,13 +132,13 @@ export async function GET(request) {
 
     const kinerjaWithPengajar = await Promise.all(
       kinerja.map(async (item) => {
-        let pengajar_nama = 'Tidak diketahui'
+        let pengajar_nama = item.pengajar_nama || 'Tidak diketahui'
         try {
           if (item.pengajar_id && ObjectId.isValid(item.pengajar_id)) {
             const pengajar = await db.collection('pegawai').findOne({
               _id: new ObjectId(item.pengajar_id)
             })
-            pengajar_nama = pengajar?.nama || 'Tidak diketahui'
+            pengajar_nama = pengajar?.nama || pengajar_nama
           }
         } catch (e) { }
         return {
@@ -175,17 +189,20 @@ export async function POST(request) {
     // Pegawai/Guru hanya boleh menginput kinerja miliknya sendiri
     let pengajarIdFinal = pengajar_id
     if (isStaff(session) && !isAdmin(session)) {
-      const { ObjectId } = await import('mongodb')
-      const myName = (session.user.name || '').trim()
-      const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      const myPegawai = await db.collection('pegawai').findOne({
-        $or: [
-          { id: session.user.id },
-          ...(myName ? [{ nama: { $regex: '^' + esc(myName) + '$', $options: 'i' } }] : [])
-        ]
-      })
+      const myPegawai = await resolvePegawaiForSession(db, session)
       if (!myPegawai) {
-        return NextResponse.json({ error: 'Data pegawai tidak ditemukan' }, { status: 404 })
+        console.warn(
+          `[kinerja POST] Akun "${session.user?.name || '-'}" (${session.user?.email || '-'}) ` +
+          'tidak cocok dengan data pegawai mana pun.'
+        )
+        return NextResponse.json(
+          {
+            error:
+              'Data pegawai untuk akun ini tidak ditemukan. Minta admin menyamakan nama ' +
+              'akun dengan data pegawai, atau menautkan akun (field pegawai.user_id / pegawai.email).'
+          },
+          { status: 404 }
+        )
       }
       pengajarIdFinal = String(myPegawai._id)
     }
@@ -229,6 +246,7 @@ export async function POST(request) {
 
     const newKinerja = {
       pengajar_id: pengajarIdFinal,
+      pengajar_nama: namaPengajar || session.user?.name || '',
       tanggal,
       jam_mulai,
       jam_selesai,
